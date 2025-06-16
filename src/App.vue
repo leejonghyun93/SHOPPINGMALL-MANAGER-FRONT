@@ -1,67 +1,19 @@
+<!-- src/App.vue -->
 <script setup>
-import SellerHeader from './components/layout/SellerHeader.vue'
-import SellerSidebar from './components/layout/SellerSidebar.vue'
-import SellerFooter from './components/layout/SellerFooter.vue'
+import { computed, defineAsyncComponent } from 'vue'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+
+// 현재 라우트의 layout meta값을 기반으로 동적으로 컴포넌트 로딩
+const layoutComponent = computed(() => {
+  const layout = route.meta.layout || 'DefaultLayout'
+  return defineAsyncComponent(() => import(`@/components/layout/${layout}.vue`))
+})
 </script>
 
 <template>
-  <div class="app-layout">
-    <SellerSidebar class="seller-sidebar" />
-    <div class="main-content">
-      <SellerHeader />
-      <div class="content-wrapper">
-        <router-view />
-      </div>
-      <SellerFooter />
-    </div>
-  </div>
+  <component :is="layoutComponent">
+    <router-view />
+  </component>
 </template>
-
-<style>
-html, body, #app {
-  height: 100%;
-  min-height: 100vh;
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
-}
-
-.app-layout {
-  display: flex;
-  min-height: 100vh;
-  background: #22242a;
-}
-
-.seller-sidebar {
-  width: 14%;
-  background-color: #2f3247;
-  color: white;
-  height: 100vh;
-  padding: 1rem;
-  box-sizing: border-box;
-}
-
-.main-content {
-  flex: 1 1 0;
-  display: flex;
-  flex-direction: column;
-  background: #f0f2f5;
-  min-height: 100vh;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.content-wrapper {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  padding: 2.5rem 4rem;           
-  width: 100%;
-  height: 100%;
-  box-sizing: border-box;
-  min-height: 0;
-}
-</style>

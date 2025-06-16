@@ -15,8 +15,8 @@ const routes = [
   { path: '/product/:productCode', name: 'ProductDetail', component: ProductDetail, props: true },
   { path: '/product/:productCode/reviews', name: 'ProductReviewList', component: ProductReviewList, props: true },
   { path: '/product/:productCode/inquiries', name: 'ProductInquiryList', component: ProductInquiryList, props: true },
-  { path: '/login', name: 'Login', component: Login, },
-  { path: '/host/register', name: 'Register', component: Register,},
+  { path: '/login', name: 'Login', component: () => import('@/components/login.vue'), meta: { layout: 'EmptyLayout' }},
+  { path: '/host/register', name: 'Register', component: () => import('@/components/host/register.vue'), meta: { layout: 'EmptyLayout' }},
 ]
 
 const router = createRouter({
