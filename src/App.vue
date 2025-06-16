@@ -13,7 +13,7 @@ import HelloWorld from './components/HelloWorld.vue'
   </div>
   <HelloWorld msg="Vite + Vue" />
 </template>
-
+<!-- 안녕 -->
 <style scoped>
 .logo {
   height: 6em;
