@@ -1,0 +1,137 @@
+/* 주문관리 공통 래퍼 */
+.order-wrapper {
+  width: 100%;
+  padding: 20px 40px;
+  /* margin: 40px auto; */
+  box-sizing: border-box;
+  font-family: 'Arial', sans-serif;
+}
+
+/* 상태 요약 박스 */
+.status-summary {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.status-summary .status-box {
+  flex: 1;
+  background-color: #e9f1ff;
+  border: 1px solid #c5d8f1;
+  border-radius: 5px;
+  text-align: center;
+  padding: 12px;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+/* 필터 영역 */
+.order-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+}
+
+.order-filters input[type="text"]{
+  width: 500px;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  height: 32px;
+}
+
+.order-filters input[type="date"]{
+  width: 200px;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  height: 32px;
+}
+
+.order-filters select {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  height: 32px;
+}
+
+
+.order-filters button {
+  padding: 6px 12px;
+  background-color: #2c3eaa;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.order-filters button:hover {
+  background-color: #1e2f85;
+}
+
+/* 테이블 영역 */
+.order-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.order-table th,
+.order-table td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: center;
+}
+
+.order-table th {
+  background-color: #f4f6fa;
+  font-weight: bold;
+}
+
+.order-table td a {
+  color: #2c3eaa;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* 페이지네이션 */
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.pagination button {
+  border: 1px solid #ccc;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+}
+
+.pagination .active {
+  background-color: #2c3eaa;
+  color: white;
+  border-color: #2c3eaa;
+}
+
+/* 상태변경 버튼 */
+.status-action-buttons {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.status-action-buttons button {
+  padding: 8px 14px;
+  background-color: #2c3eaa;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.status-action-buttons button:hover {
+  background-color: #1e2f85;
+}
