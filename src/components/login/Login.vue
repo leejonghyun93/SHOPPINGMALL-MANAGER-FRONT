@@ -24,9 +24,9 @@
         </div>
 
         <div class="option">
-          <router-link to="/">아이디 찾기</router-link>
+          <router-link to="/login/findId">아이디 찾기</router-link>
           <b> | </b>
-          <router-link to="/">비밀번호 찾기</router-link>
+          <router-link to="/login/findPassword">비밀번호 찾기</router-link>
         </div>
 
         <p class="footer-text">
@@ -39,7 +39,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
 
@@ -58,18 +58,43 @@ const handleLogin = async () => {
     const token = response.data.token
     if (rememberMe.value) {
       localStorage.setItem('jwt', token)
+      localStorage.setItem('rememberMe', 'true')
     } else {
       sessionStorage.setItem('jwt', token)
+      localStorage.removeItem('rememberMe')
     }
 
-    router.push('/dashboard')
+    router.push('/')
   } catch (error) {
-    alert('아이디 또는 비밀번호가 틀립니다.')
+    alert(error.response?.data?.error || '로그인 실패')
     console.error(error)
   }
 }
+
+// Axios 요청마다 Authorization 자동 설정
+onMounted(() => {
+  // 중복 등록 방지
+  if (!axios.interceptors.request.handlers.length) {
+    axios.interceptors.request.use(config => {
+      // 1. rememberMe 체크
+      const remember = localStorage.getItem('rememberMe') === 'true'
+
+      // 2. remember 값에 따라 token 위치 선택
+      const token = remember
+        ? localStorage.getItem('jwt')       // rememberMe면 localStorage
+        : sessionStorage.getItem('jwt')     // 아니면 sessionStorage
+
+      // 3. 토큰이 존재하면 요청 헤더에 Authorization 추가
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`
+      }
+
+      return config
+    })
+  }
+})
 </script>
-<!-- 안녕 -->
+
 <style scoped>
 .login-container {
   display: flex;
@@ -114,7 +139,28 @@ form input[type="password"] {
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 14px;
+  box-sizing: border-box; 
+  background-color: #fff;
 }
+
+/* form input[type="text"],
+form input[type="password"],
+form button{
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  box-sizing: border-box;
+} */
+
+/*form input[type="text"],
+form input[type="password"],
+form button {
+  width: 100%;
+  box-sizing: border-box;
+} */
 
 form .options {
   display: flex;
@@ -131,17 +177,24 @@ form .options b {
   color: #3b5998;
 }
 
-
 form button {
+  /* all: unset; ❌ 빼버리고 아래처럼 직접 초기화 */
+  appearance: none;
+  border: none;
+  outline: none;
+  background: none;
+
+  display: block;
   width: 100%;
+  box-sizing: border-box; /* ✅ 이거 꼭 넣어 */
   background-color: #3b5998;
   color: white;
   padding: 10px;
-  border: none;
   border-radius: 4px;
   font-size: 15px;
+  text-align: center;
   cursor: pointer;
-  margin-bottom: 1rem; /* 또는 20px 등 */
+  margin-bottom: 1rem;
 }
 
 form button:hover {
