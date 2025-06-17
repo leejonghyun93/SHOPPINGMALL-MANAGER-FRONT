@@ -5,6 +5,7 @@
 </template>
 
 <style scoped>
+
 /*.empty-layout {
   min-height: 100vh;
   display: flex;
@@ -14,4 +15,5 @@
   padding: 2rem;
   box-sizing: border-box;
 }*/
+
 </style>

@@ -5,10 +5,10 @@ import { useRoute } from 'vue-router'
 
 const route = useRoute()
 
-// 현재 라우트의 layout meta값을 기반으로 동적으로 컴포넌트 로딩
+// layout 컴포넌트를 동적으로 가져옴
 const layoutComponent = computed(() => {
   const layout = route.meta.layout || 'DefaultLayout'
-  return defineAsyncComponent(() => import(`@/components/layout/${layout}.vue`))
+  return defineAsyncComponent(() => import(`./components/layout/${layout}.vue`))
 })
 </script>
 
@@ -17,3 +17,13 @@ const layoutComponent = computed(() => {
     <router-view />
   </component>
 </template>
+
+<style>
+html, body, #app {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+</style>
