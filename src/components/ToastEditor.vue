@@ -14,10 +14,12 @@ let editorInstance = null
 onMounted(() => {
   editorInstance = new Editor({
     el: editorRoot.value,
-    height: '500px',
+     height: '1100px',
     initialEditType: 'markdown',
     previewStyle: 'vertical',
     initialValue: 'Hello, Toast UI!'
   })
 })
 </script>
+
+

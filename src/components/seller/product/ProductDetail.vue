@@ -1,12 +1,17 @@
+<!-- ProductDetail.vue -->
 <template>
-  <ProductDetailLayout :tabs="tabs" :currentTab="currentTab" @update:currentTab="currentTab = $event">
+  <ProductDetailLayout
+    :tabs="tabs"
+    :currentTab="currentTab"
+    @update:currentTab="onTabClick"
+  >
     <template v-if="currentTab === '상품 상세정보'">
       <div class="main-row">
-        <!-- 대표 이미지 (왼쪽, 크게) -->
+        <!-- 대표 이미지 -->
         <div class="product-image-area">
           <img :src="product.image" alt="대표이미지" />
         </div>
-        <!-- 상품 정보 (오른쪽, 테이블+버튼) -->
+        <!-- 상품 정보 테이블 -->
         <div class="product-meta-table">
           <div class="table-wrapper">
             <table>
@@ -33,39 +38,53 @@
         </div>
       </div>
     </template>
+
     <template v-else-if="currentTab === '후기'">
-      <div class="tab-content">
-        <h3>후기</h3>
-        <ul>
-          <li v-for="review in reviews" :key="review.id">
-            <strong>{{ review.user }}</strong> ({{ review.date }}) - ★{{ review.rating }}<br>
-            {{ review.content }}
-          </li>
-        </ul>
-        <div v-if="reviews.length === 0" class="no-review">등록된 후기가 없습니다.</div>
-      </div>
+      <!-- 관리자용 후기 테이블 컴포넌트 -->
+      <ProductReviewList :productId="product.id" />
     </template>
+
     <template v-else-if="currentTab === '문의'">
-      <div class="tab-content">
-        <h3>문의</h3>
-        <ul>
-          <li v-for="inquiry in inquiries" :key="inquiry.id">
-            <strong>{{ inquiry.user }}</strong> ({{ inquiry.date }})<br>
-            {{ inquiry.content }}
-          </li>
-        </ul>
-        <div v-if="inquiries.length === 0" class="no-inquiry">등록된 문의가 없습니다.</div>
-      </div>
+      <ProductInquiryList :productId="product.id" />
     </template>
   </ProductDetailLayout>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import ProductDetailLayout from './ProductDetailLayout.vue';
+import ProductReviewList from './ProductReviewList.vue';
+import ProductInquiryList from './ProductInquiryList.vue';
 
 const tabs = ['상품 상세정보', '후기', '문의'];
-const currentTab = ref('상품 상세정보');
+const router = useRouter();
+const route = useRoute();
+
+const currentTab = ref(route.query.tab && tabs.includes(route.query.tab) ? route.query.tab : tabs[0]);
+
+watch(currentTab, (tab) => {
+  router.replace({ query: { ...route.query, tab } });
+});
+watch(
+  () => route.query.tab,
+  (tab) => {
+    if (tab && tabs.includes(tab)) currentTab.value = tab;
+  }
+);
+
+function onTabClick(tab) {
+  currentTab.value = tab;
+}
+
+function goToList() {
+  // 라우터 이동 예시
+  router.push({ name: 'ProductList' });
+}
+function goToEdit() {
+  // 라우터 이동 예시
+  router.push({ name: 'ProductEdit', params: { id: product.id } });
+}
 
 const product = {
   id: 'P001',
@@ -82,30 +101,21 @@ const product = {
   createdAt: '2025-06-01',
   updatedAt: '2025-06-14'
 };
-const reviews = [
-  { id: 1, user: '홍길동', date: '2025-06-10', rating: 5, content: '아주 좋아요!' },
-  { id: 2, user: '김철수', date: '2025-06-12', rating: 4, content: '만족합니다.' }
-];
+
 const inquiries = [
   { id: 1, user: '이영희', date: '2025-06-11', content: '배송은 얼마나 걸리나요?' },
   { id: 2, user: '박민수', date: '2025-06-13', content: '상품 색상 선택 가능한가요?' }
 ];
-
-function goToList() {
-  // 라우터 이동
-}
-function goToEdit() {
-  // 라우터 이동
-}
 </script>
 
 <style scoped>
 .main-row {
   display: flex;
-  justify-content: center;   /* 수평 중앙 정렬 */
-  align-items: flex-start;   /* 필요시 center로 하면 수직도 중앙 */
-  gap: 80px;                 /* 이미지-테이블 간격 */
-  margin-bottom: 32px;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 140px;
+  margin-top: 40px;
+  margin-bottom: 20px;
   width: 100%;
 }
 .product-image-area {
@@ -115,8 +125,8 @@ function goToEdit() {
   align-items: center;
 }
 .product-image-area img {
-  width: 640px;
-  height: 640px;
+  width: 650px;
+  height: 650px;
   object-fit: cover;
   border-radius: 10px;
   border: 1px solid #e0e0e0;
@@ -190,7 +200,6 @@ function goToEdit() {
   padding: 32px 0;
   color: #555;
 }
-.no-review,
 .no-inquiry {
   color: #888;
   padding: 32px 0;
