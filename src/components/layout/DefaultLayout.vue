@@ -1,11 +1,20 @@
 <script setup>
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import SellerHeader from '@/components/layout/SellerHeader.vue'
 import SellerSidebar from '@/components/layout/SellerSidebar.vue'
 import SellerFooter from '@/components/layout/SellerFooter.vue'
+
+const route = useRoute()
+
+// route.name이 바뀔 때마다 반응하도록 computed로 처리
+const isEmptyLayoutPage = computed(() => {
+  return route.name === 'Login' || route.name === 'Register' // 필요한 이름 추가
+})
 </script>
 
 <template>
-  <div class="app-layout">
+  <div class="app-layout" v-if="!isEmptyLayoutPage">
     <SellerSidebar class="seller-sidebar" />
     <div class="main-content">
       <SellerHeader />
@@ -14,6 +23,10 @@ import SellerFooter from '@/components/layout/SellerFooter.vue'
       </div>
       <SellerFooter />
     </div>
+  </div>
+
+  <div v-else>
+    <slot />
   </div>
 </template>
 

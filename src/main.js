@@ -1,4 +1,3 @@
-
 // import './assets/main.css'
 // import './assets/tailwind.css'
 
@@ -12,4 +11,8 @@ import '@/assets/main.css'
 
 const app = createApp(App)
 app.use(router)
-app.mount('#app')
+
+// 라우터 준비 완료 후에 마운트
+router.isReady().then(() => {
+  app.mount('#app')
+})
