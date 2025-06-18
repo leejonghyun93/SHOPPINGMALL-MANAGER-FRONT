@@ -1,21 +1,20 @@
-<!-- src/App.vue -->
 <script setup>
-import { computed, defineAsyncComponent } from 'vue'
-import { useRoute } from 'vue-router'
-
-const route = useRoute()
-
-// layout 컴포넌트를 동적으로 가져옴
-const layoutComponent = computed(() => {
-  const layout = route.meta.layout || 'DefaultLayout'
-  return defineAsyncComponent(() => import(`./components/layout/${layout}.vue`))
-})
+import DefaultLayout from './components/layout/DefaultLayout.vue'
 </script>
 
 <template>
-  <component :is="layoutComponent">
-    <router-view />
-  </component>
+  <DefaultLayout>
+    <Suspense>
+      <template #default>
+        <transition name="fade" mode="out-in">
+          <router-view :key="$route.fullPath" />
+        </transition>
+      </template>
+      <template #fallback>
+        <div class="loading">로딩 중입니다...</div>
+      </template>
+    </Suspense>
+  </DefaultLayout>
 </template>
 
 <style>

@@ -19,14 +19,10 @@
           <td>{{ inquiry.id }}</td>
           <td>{{ inquiry.productName }}</td>
           <td>
-  <a
-    href="#"
-    class="inquiry-link"
-    @click.prevent="goToInquiryDetail(inquiry.id)"
-  >
-    {{ shortContent(inquiry.content) }}
-  </a>
-</td>
+            <router-link :to="{ name: 'ProductInquiryDetail', params: { id: inquiry.id } }" class="inquiry-link">
+              {{ shortContent(inquiry.content) }}
+            </router-link>
+          </td>
           <td>{{ inquiry.author }}</td>
           <td>{{ inquiry.date }}</td>
           <td>{{ inquiry.isPublic ? '공개' : '비공개' }}</td>
