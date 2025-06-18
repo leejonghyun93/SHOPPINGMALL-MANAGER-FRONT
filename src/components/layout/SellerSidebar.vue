@@ -31,13 +31,15 @@
           </li>
         
         <li>
-          <a href="#" class="sidebar-link">
+          <!-- <a href="#" class="sidebar-link"> -->
+          <router-link to="/order" class="sidebar-link">
             <span class="menu-icon">
               <!-- 주문 관리: 체크리스트 아이콘 -->
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="#fff" stroke-width="2"/><path d="M8 9H16M8 13H12" stroke="#fff" stroke-width="2"/><circle cx="8" cy="17" r="1" fill="#fff"/></svg>
             </span>
             주문 관리
-          </a>
+          </router-link>
+          <!-- </a> -->
         </li>
         <li>
           <a href="#" class="sidebar-link">

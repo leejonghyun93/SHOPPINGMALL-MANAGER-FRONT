@@ -1,133 +1,239 @@
 <template>
-  <div class="order-wrapper">
-    <!-- 상태 요약 -->
-    <div class="status-summary">
-      <div class="status-box">결제완료<br />{{ summary.paid }}건</div>
-      <div class="status-box">배송준비중<br />{{ summary.ready }}건</div>
-      <div class="status-box">배송중<br />{{ summary.shipping }}건</div>
+  <div class="rounded-order-page">
+    <!-- 상단 -->
+    <div class="page-title">
+      <h2>전체 주문</h2>
     </div>
 
-    <!-- 필터 -->
-    <div class="order-filters">
-      <label>시작일 <input type="date" v-model="startDate" /> </label>
-      <label>종료일 <input type="date" v-model="endDate" /> </label>
+    <!-- 검색 섹션 -->
+    <div class="rounded-search-bar">
+      <select><option>전체</option></select>
+      <input type="text" placeholder="검색어 입력" />
+      <button class="search-btn">🔍</button>
+      <button class="detail-toggle" @click="showDetail = !showDetail">
+        {{ showDetail ? '▲ 상세검색 닫기' : '+ 상세검색' }}
+      </button>
     </div>
-    <div class="order-filters">
-      <input type="text" v-model="searchOrderNo" placeholder="주문번호" />
-      <button @click="searchOrders">검색</button>
-      <select v-model="sortOption">
-        <option value="latest">최신순</option>
-        <option value="oldest">과거순</option>
-      </select>
+
+    <!-- 상세 검색 -->
+    <transition name="fade">
+      <div v-if="showDetail" class="detail-box">
+        <h4>Search</h4>
+
+        <table class="detail-table">
+          <tbody>
+            <tr>
+              <th>주문일</th>
+              <td colspan="5">
+                <input type="date" />
+                <span> - </span>
+                <input type="date" />
+                <!-- <div class="quick-range"> -->
+                  <button>오늘</button>
+                  <button>1주일</button>
+                  <button>1개월</button>
+                  <button>3개월</button>
+                  <button>6개월</button>
+                  <button>1년</button>
+                <!-- </div> -->
+              </td>
+            </tr>
+            <tr>
+              <th>진행상태</th>
+              <td colspan="5">
+                <label><input type="checkbox" /> 결제대기</label>
+                <label><input type="checkbox" /> 결제완료</label>
+                <label><input type="checkbox" /> 배송준비</label>
+                <label><input type="checkbox" /> 배송중</label>
+                <label><input type="checkbox" /> 배송완료</label>
+                <label><input type="checkbox" /> 환불요청</label>
+              </td>
+            </tr>
+            <tr>
+              <th>결제수단</th>
+              <td colspan="5">
+                <label><input type="checkbox" /> 카드결제</label>
+                <label><input type="checkbox" /> 무통장입금</label>
+                <label><input type="checkbox" /> 카카오페이</label>
+                <label><input type="checkbox" /> 페이팔</label>
+              </td>
+            </tr>
+            <tr>
+              <th>회원구분</th>
+              <td colspan="2">
+                <label><input type="radio" name="userType" checked /> 전체</label>
+                <label><input type="radio" name="userType" /> 회원</label>
+                <label><input type="radio" name="userType" /> 비회원</label>
+              </td>
+              <th>상품타입</th>
+              <td colspan="2">
+                <label><input type="radio" name="productType" checked /> 전체</label>
+                <label><input type="radio" name="productType" /> 배송상품</label>
+                <label><input type="radio" name="productType" /> 티켓상품</label>
+              </td>
+            </tr>
+            <tr>
+              <th>받는분 이름</th>
+              <td><input type="text" placeholder="받는분 이름" /></td>
+              <th>받는분 휴대폰</th>
+              <td><input type="text" placeholder="휴대폰번호" /></td>
+              <th>받는분 주소</th>
+              <td><input type="text" placeholder="주소" /></td>
+            </tr>
+            <tr>
+              <th>사용자 이름</th>
+              <td><input type="text" placeholder="사용자 이름" /></td>
+              <th>사용자 휴대폰</th>
+              <td><input type="text" placeholder="휴대폰번호" /></td>
+              <th>사용자 이메일</th>
+              <td><input type="text" placeholder="이메일" /></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- 하단 버튼 -->
+        <div class="bottom-buttons">
+          <button class="search-btn">검색</button>
+        </div>
+      </div>
+    </transition>
+
+    <!-- 컨트롤 영역 -->
+    <div class="rounded-control">
+      <!-- 왼쪽: 버튼 그룹 -->
+      <div class="left-buttons">
+        <button>전체선택</button>
+        <button>선택해제</button>
+        <button>선택 주문취소</button>
+        <button>선택엑셀다운</button>
+        <button>검색엑셀다운</button>
+      </div>
+
+      <!-- 오른쪽: select 박스 그룹 -->
+      <div class="right-selects">
+        <select>
+          <option>주문일</option>
+        </select>
+        <select>
+          <option>20개씩</option>
+        </select>
+      </div>
     </div>
 
     <!-- 테이블 -->
-    <table class="order-table">
-      <thead>
-        <tr>
-          <th>체크</th>
-          <th>주문번호</th>
-          <th>주문자명</th>
-          <th>연락처</th>
-          <th>주문일시</th>
-          <th>주문상태</th>
-          <th>배송상태</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="order in filteredOrders" :key="order.orderNo">
-          <td><input type="checkbox" v-model="selectedOrders" :value="order.orderNo" /></td>
-          <td>{{ order.orderNo }}</td>
-          <td><a>{{ order.name }}</a></td>
-          <td>{{ order.phone }}</td>
-          <td>{{ order.date }}</td>
-          <td>{{ order.orderStatus }}</td>
-          <td>{{ order.deliveryStatus }}</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <!-- 페이지네이션 -->
-    <div class="pagination">
-      <button :disabled="currentPage === 1" @click="currentPage--">이전</button>
-      <button class="active">{{ currentPage }}</button>
-      <button :disabled="!hasNextPage" @click="currentPage++">다음</button>
+    <div class="rounded-table-wrapper">
+      <table class="rounded-order-table">
+        <thead>
+          <tr>
+            <th><input type="checkbox" /></th>
+            <th>No</th>
+            <th>주문번호/주문자</th>
+            <th>상품</th>
+            <th>결제정보</th>
+            <th>주문일</th>
+            <th>관리</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(order, i) in orders" :key="order.orderNo">
+            <td><input type="checkbox" /></td>
+            <td>{{ orders.length - i }}</td>
+            <td>
+              <div class="order-num">{{ order.orderNo }}</div>
+              <div class="order-user">{{ order.user }}</div>
+            </td>
+            <td>
+              <div class="product" v-for="(p, idx) in order.products" :key="idx">
+                <img :src="p.image" />
+                <div>
+                  <div class="product-name">{{ p.name }}</div>
+                  <div class="product-device">PC</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="status status-green">배송상품</div>
+              <div class="status status-blue">결제완료</div>
+              <div class="price">0원</div>
+            </td>
+            <td>{{ order.date }}</td>
+            <td class="action-buttons">
+              <router-link :to="`/order/detail/?order_id=${orders.orderNo}`" class="action-button-link">상세보기</router-link>
+              <button>주문취소</button>
+              <button disabled>주문서</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
-    <!-- 상태변경 버튼 -->
-    <div class="status-action-buttons">
-      <button @click="changeOrderStatus">주문상태 변경</button>
-      <button @click="changeDeliveryStatus">배송상태 변경</button>
+    <!-- 페이지네이션 -->
+    <div class="pagination-wrapper">
+      <div class="pagination">
+        <button class="btn-main" @click="prevPage" :disabled="currentPage === 1"><</button>
+        <button
+          v-for="page in totalPages"
+          :key="page"
+          @click="goToPage(page)"
+          :class="['btn-main', { active: currentPage === page }]"
+          >
+        {{ page }}
+        </button>
+        <button class="btn-main" @click="nextPage" :disabled="currentPage === totalPages">></button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 
-const summary = ref({
-  paid: 1,
-  ready: 1,
-  shipping: 1,
-})
-
-const orders = ref([
-  {
-    orderNo: '1920300',
-    name: '홍길동',
-    phone: '010-1234-1234',
-    date: '2025-06-05',
-    orderStatus: 'Y',
-    deliveryStatus: 'Y',
-  },
-  // 필요한 만큼 추가
-])
-
-const searchOrderNo = ref('')
-const sortOption = ref('latest')
-const startDate = ref('')
-const endDate = ref('')
 const currentPage = ref(1)
-const selectedOrders = ref([])
+const totalPages = ref(5) // 원하는 만큼 숫자 넣기 (예: 5페이지)
+const showDetail = ref(false)
 
-const filteredOrders = computed(() => {
-  let filtered = orders.value
-
-  if (searchOrderNo.value) {
-    filtered = filtered.filter(o => o.orderNo.includes(searchOrderNo.value))
+const prevPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
   }
-
-  if (startDate.value) {
-    filtered = filtered.filter(o => o.date >= startDate.value)
-  }
-  if (endDate.value) {
-    filtered = filtered.filter(o => o.date <= endDate.value)
-  }
-
-  if (sortOption.value === 'latest') {
-    filtered = [...filtered].sort((a, b) => b.date.localeCompare(a.date))
-  } else {
-    filtered = [...filtered].sort((a, b) => a.date.localeCompare(b.date))
-  }
-
-  return filtered
-})
-
-const hasNextPage = computed(() => {
-  return false // 추후 페이지네이션 구현 시 변경
-})
-
-const searchOrders = () => {
-  currentPage.value = 1
 }
 
-const changeOrderStatus = () => {
-  alert('주문 상태 변경 대상: ' + selectedOrders.value.join(', '))
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+  }
 }
 
-const changeDeliveryStatus = () => {
-  alert('배송 상태 변경 대상: ' + selectedOrders.value.join(', '))
+const goToPage = (page) => {
+  currentPage.value = page
 }
+const orders = [
+  {
+    orderNo: '16910-20314-69919',
+    user: '관리자 (master)',
+    date: '2025-06-18 (14:24:38)',
+    products: [
+      { name: '유기농 통밀빵', image: 'https://via.placeholder.com/50' },
+      { name: '명장 초코 도넛', image: 'https://via.placeholder.com/50' }
+    ]
+  },
+  {
+    orderNo: '07613-10021-48450',
+    user: '관리자 (master)',
+    date: '2025-06-18 (14:22:39)',
+    products: [
+      { name: '오리지널 & 생크림 도넛', image: 'https://via.placeholder.com/50' }
+    ]
+  },
+  {
+    orderNo: '87825-20831-43991',
+    user: '관리자 (master)',
+    date: '2025-06-18 (14:21:56)',
+    products: [
+      { name: '오렌지 크림 도넛', image: 'https://via.placeholder.com/50' }
+    ]
+  }
+]
 </script>
 
-<style scoped src="@/assets/order.css"></style>
+<style scoped src="@/assets/order/order.css"></style>
