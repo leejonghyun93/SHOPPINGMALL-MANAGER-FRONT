@@ -71,10 +71,12 @@
               </td>
               <td>{{ product.productCode }}</td>
               <td>
-                <router-link :to="`/product/${product.productCode}`" class="product-link">
-                  {{ product.productName }}
-                </router-link>
-              </td>
+  <router-link
+    :to="{ name: 'ProductDetail', params: { productCode: product.productCode } }"
+    class="review-link">
+    {{ product.productName }}
+  </router-link>
+</td>
               <td>{{ product.category }}</td>
               <td>{{ currency(product.price) }}</td>
               <td>{{ currency(product.salePrice) }}</td>

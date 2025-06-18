@@ -10,6 +10,7 @@
           <th>후기내용</th>
           <th>작성자</th>
           <th>등록일자</th>
+          <th>수정일자</th>
           <th>후기표시</th>
         </tr>
       </thead>
@@ -20,14 +21,15 @@
           <td>{{ review.productName }}</td>
           <td>
   <router-link
-    :to="{ name: 'ProductReviewDetail', params: { id: review.id } }"
-    class="review-link"
-  >
-    {{ shortContent(review.content) }}
-  </router-link>
+  :to="{ name: 'ProductReviewDetail', params: { reviewId: review.id } }"
+  class="review-link"
+>
+  {{ shortContent(review.content) }}
+</router-link>
 </td>
           <td>{{ review.author }}</td>
           <td>{{ review.date }}</td>
+          <td>{{ review.updatedAt }}</td>
           <td>
             <label class="switch">
               <input type="checkbox" :checked="review.visible" @change="toggleVisibility(review)" />
@@ -86,6 +88,7 @@ const reviews = ref([
     content: '정말 신선하고 맛있습니다. 다음에도 또 구매할게요!',
     author: '홍길동',
     date: '2025-06-05',
+    updatedAt: '2025-06-07',
     visible: true,
   },
   {
@@ -94,6 +97,7 @@ const reviews = ref([
     content: '맛도 좋고 배송도 빨랐어요.',
     author: '김철수',
     date: '2025-06-12',
+    updatedAt: '2025-06-14',
     visible: false,
   },
   // ...더 많은 데이터
