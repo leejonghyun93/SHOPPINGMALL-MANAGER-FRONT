@@ -9,7 +9,9 @@ const route = useRoute()
 
 // route.name이 바뀔 때마다 반응하도록 computed로 처리
 const isEmptyLayoutPage = computed(() => {
-  return route.name === 'Login' || route.name === 'Register' // 필요한 이름 추가
+  return route.name === 'Login' || route.name === 'Register' || 
+    route.name === 'FindId' || route.name === 'FindPassword' || 
+    route.name === 'ChangePassword' // 필요한 이름 추가
 })
 </script>
 

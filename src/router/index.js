@@ -15,10 +15,10 @@ const Login = () => import('@/components/login/login.vue')
 const Register = () => import('@/components/host/register.vue')
 const FindId = () => import('@/components/login/FindId.vue')
 const FindPassword = () => import('@/components/login/FindPasswordStep1.vue')
-const ChangePassword = () => () => import('@/components/login/ChangePassword.vue')
+const ChangePassword = () => import('@/components/login/ChangePassword.vue')
 
 const routes = [
-  { path: '/', name: 'Dashboard', component: SellerMain },
+  { path: '/', name: 'Dashboard', component: SellerMain, meta: { requiresAuth: true }},
   { path: '/product', name: 'ProductList', component: ProductList },
   { path: '/product/register', name: 'ProductRegister', component: ProductRegister },
   { path: '/product/:productCode', component: ProductDetail, props: true, children: [
@@ -44,6 +44,22 @@ const router = createRouter({
   routes,
   scrollBehavior() {
     return { left: 0, top: 0 }
+  }
+})
+
+// ✅ Navigation Guard 설정
+const publicPages = ['/login', '/login/findId', '/login/findPassword', '/login/changePassword', '/host/register']
+
+router.beforeEach((to, from, next) => {
+  const isLoggedIn = !!localStorage.getItem('jwt') || !!sessionStorage.getItem('jwt')
+  const isPublicPage = publicPages.includes(to.path)
+
+  if (!isPublicPage && !isLoggedIn) {
+    next('/login')
+  } else if (to.path === '/login' && isLoggedIn) {
+    next('/')
+  } else {
+    next()
   }
 })
 
