@@ -1,33 +1,53 @@
 <template>
-  <div class="inquiry-detail">
-    <!-- 제목만 맨 위 중앙 -->
-    <div class="inquiry-detail-title-above">문의 상세보기</div>
-    <!-- 목록 버튼만 한 줄 아래 왼쪽 -->
-    <div class="inquiry-detail-header">
-      <button class="btn-main list-btn-top" @click="goToInquiryList">
+  <div class="review-detail">
+    <div class="review-detail-header">
+      <div class="review-detail-title-above">후기 상세보기</div>
+      <button class="btn-main list-btn-top" @click="goToReviewList">
         <span class="icon-arrow">&#8592;</span> 목록
       </button>
     </div>
 
-    <!-- 문의 정보 (한 줄, 일자 배치) -->
-    <div class="inquiry-info-row">
-      <span class="inquiry-id">{{ inquiry.id }}</span>
-      <span class="inquiry-title">{{ inquiry.title }}</span>
-      <span class="inquiry-author">{{ inquiry.author }}</span>
-      <span class="inquiry-date">{{ inquiry.date }}</span>
+    <div class="review-info-row">
+      <span class="review-id">{{ review.id }}</span>
+      <span class="review-product">{{ review.productName }}</span>
+      <span class="review-author">{{ review.author }}</span>
+      <span class="review-date">{{ review.date }}</span>
     </div>
 
-    <!-- 문의 내용 -->
-    <div class="inquiry-content-card">
-      <div class="inquiry-content-title">문의 내용</div>
-      <div class="inquiry-content-text">{{ inquiry.content }}</div>
+    <div class="review-image-section">
+      <template v-if="review.imageUrls && review.imageUrls.length">
+        <div class="image-slider">
+          <img
+            v-for="(img, idx) in review.imageUrls"
+            :key="idx"
+            :src="img"
+            alt="리뷰 사진"
+            class="review-image"
+            @click="openModal(idx)"
+          />
+        </div>
+      </template>
+      <template v-else>
+        <div class="no-image">
+          <span class="no-image-icon">🖼️</span>
+          <span class="no-image-text">이미지 없음</span>
+        </div>
+      </template>
     </div>
 
-    <!-- 답변 영역 -->
-    <div class="inquiry-reply-card" :class="{ 'has-reply': inquiry.reply }">
+    <div v-if="isModalOpen" class="modal-backdrop" @click="closeModal">
+      <img :src="review.imageUrls[modalIndex]" class="modal-image" />
+    </div>
+
+    <div class="review-content-card">
+      <div class="review-content-title">리뷰 내용</div>
+      <div class="review-content-text">{{ review.content }}</div>
+    </div>
+
+    <div class="review-reply-card" :class="{ 'has-reply': review.reply }">
       <div class="reply-title">답변</div>
-      <template v-if="inquiry.reply">
-        <div class="reply-content">{{ inquiry.reply }}</div>
+      <template v-if="review.reply">
+        <div class="reply-content">{{ review.reply }}</div>
         <button class="btn-main btn-edit" @click="editReply = true" v-if="!editReply">수정</button>
         <button class="btn-main btn-delete" @click="deleteReply">삭제</button>
       </template>
@@ -74,14 +94,28 @@ import { useRouter, useRoute } from 'vue-router';
 const router = useRouter();
 const route = useRoute();
 
-const inquiry = ref({
+const review = ref({
   id: route.params.id,
-  title: '배송 문의',
-  author: '이영희',
-  date: '2025-06-18',
-  content: '상품 배송이 언제쯤 도착할까요?',
+  productName: '사과',
+  author: '김철수',
+  date: '2025-06-12',
+  imageUrls: [
+    '/sample1.jpg',
+    '/sample2.jpg'
+  ],
+  content: '맛도 좋고 배송도 빨랐어요.',
   reply: '',
 });
+
+const isModalOpen = ref(false);
+const modalIndex = ref(0);
+function openModal(idx) {
+  modalIndex.value = idx;
+  isModalOpen.value = true;
+}
+function closeModal() {
+  isModalOpen.value = false;
+}
 
 const replyText = ref('');
 const replyEditText = ref('');
@@ -98,7 +132,7 @@ function submitReply() {
   if (!canSubmit.value) return;
   loading.value = true;
   setTimeout(() => {
-    inquiry.value.reply = replyText.value;
+    review.value.reply = replyText.value;
     replyEditText.value = replyText.value;
     replyText.value = '';
     loading.value = false;
@@ -108,26 +142,26 @@ function submitReply() {
 
 function saveEditReply() {
   if (replyEditText.value.trim().length >= minLength) {
-    inquiry.value.reply = replyEditText.value;
+    review.value.reply = replyEditText.value;
     editReply.value = false;
     alert('답변이 수정되었습니다.');
   }
 }
 function deleteReply() {
   if (confirm('답변을 삭제하시겠습니까?')) {
-    inquiry.value.reply = '';
+    review.value.reply = '';
     replyEditText.value = '';
     editReply.value = false;
   }
 }
 
-function goToInquiryList() {
-  router.push({ name: 'ProductInquiryList', params: { productCode: route.params.productCode } });
+function goToReviewList() {
+  router.push({ name: 'ProductReviewList', params: { productCode: route.params.productCode } });
 }
 </script>
 
 <style scoped>
-.inquiry-detail {
+.review-detail {
   max-width: 100%;
   margin: 0;
   background: #fff;
@@ -136,19 +170,18 @@ function goToInquiryList() {
   padding: 32px 16px 24px 16px;
   position: relative;
 }
-.inquiry-detail-title-above {
+.review-detail-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 6px; /* 제목과 버튼 사이 간격을 좁힘 */
+}
+.review-detail-title-above {
   text-align: center;
   font-size: 1.35rem;
   font-weight: bold;
   color: #222;
-  margin-bottom: 6px;
-}
-.inquiry-detail-header {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  margin-bottom: 10px;
-  min-height: 48px;
+  margin-bottom: 4px; /* 버튼과 더 붙게 */
 }
 .list-btn-top {
   display: inline-flex;
@@ -171,7 +204,7 @@ function goToInquiryList() {
   font-size: 1.15rem;
   margin-right: 2px;
 }
-.inquiry-info-row {
+.review-info-row {
   display: flex;
   gap: 48px;
   align-items: center;
@@ -183,45 +216,94 @@ function goToInquiryList() {
   background: #f8fafc;
   border-radius: 8px;
 }
-.inquiry-id::before {
-  content: "문의번호 : #";
+.review-id::before {
+  content: "후기번호 : #";
   color: #2563eb;
   margin-right: 4px;
 }
-.inquiry-title::before {
-  content: "문의제목 : ";
+.review-product::before {
+  content: "상품명 : ";
   color: #222;
   margin-right: 4px;
 }
-.inquiry-author::before {
+.review-author::before {
   content: "작성자 : ";
   color: #555;
   margin-right: 4px;
 }
-.inquiry-date::before {
+.review-date::before {
   content: "등록일자 : ";
   color: #888;
   margin-right: 4px;
 }
-.inquiry-content-card {
+.review-image-section {
+  text-align: center;
+  margin-bottom: 24px;
+}
+.image-slider {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.review-image {
+  max-width: 140px;
+  max-height: 120px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #f4f4f4;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.review-image:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.13);
+}
+.no-image {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #aaa;
+  font-size: 1.12rem;
+  padding: 24px 0;
+}
+.no-image-icon {
+  font-size: 2.2rem;
+}
+.modal-backdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-image {
+  max-width: 80vw;
+  max-height: 80vh;
+  border-radius: 12px;
+  background: #fff;
+}
+.review-content-card {
   background: #f5f7fa;
   border-radius: 8px;
   padding: 20px 16px 18px 16px;
   margin-bottom: 28px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
-.inquiry-content-title {
+.review-content-title {
   font-size: 1.3rem;
   font-weight: 600;
   color: #2563eb;
   margin-bottom: 8px;
 }
-.inquiry-content-text {
+.review-content-text {
   font-size: 1.2rem;
   color: #222;
   line-height: 1.7;
 }
-.inquiry-reply-card {
+.review-reply-card {
   background: #f7faff;
   border-radius: 8px;
   padding: 18px 16px 14px 16px;
@@ -230,7 +312,7 @@ function goToInquiryList() {
   border-left: 5px solid #2563eb;
   position: relative;
 }
-.inquiry-reply-card.has-reply {
+.review-reply-card.has-reply {
   background: #e6f0ff;
   border-left: 6px solid #1746a2;
 }
@@ -326,7 +408,7 @@ function goToInquiryList() {
   100% { transform: rotate(360deg);}
 }
 @media (max-width: 640px) {
-  .inquiry-detail { padding: 10px 2vw; }
-  .inquiry-info-row { gap: 16px; font-size: 1rem; }
+  .review-detail { padding: 10px 2vw; }
+  .review-info-row { gap: 16px; font-size: 1rem; }
 }
 </style>

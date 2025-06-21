@@ -1,6 +1,6 @@
 <template>
   <div class="product-list-page">
-    <!-- 상단 상태 탭 -->
+    <!-- 상태 탭 -->
     <div class="status-tabs">
       <div
         v-for="tab in statusTabs"
@@ -9,37 +9,41 @@
         @click="setStatusTab(tab.value)"
       >
         {{ tab.label }}
-        <span class="tab-count">{{ tab.count }}</span>
+        <span class="tab-count">{{ statusCounts[tab.value] || 0 }}</span>
       </div>
     </div>
 
-    <!-- 필터/검색/정렬 영역 -->
-    <div class="toolbar-spacer"></div>
+    <!-- 툴바 -->
     <div class="product-toolbar-row">
-      <select v-model="selectedCategory" @change="filterProducts" class="category-select select-lg">
-        <option value="">전체 카테고리</option>
-        <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
-      </select>
-      <div class="toolbar-center">
-        <div class="search-bar">
-          <input
-            v-model="searchKeyword"
-            @keyup.enter="searchProducts"
-            type="text"
-            placeholder="상품명, 상품코드 검색"
-          />
-          <button @click="searchProducts" class="btn-main">검색</button>
-        </div>
+      <div class="toolbar-left">
+        <select v-if="categories && categories.length > 0" v-model="selectedCategory" @change="onCategoryChange" class="category-select">
+          <option value="">전체 대분류</option>
+          <option v-for="cat in categories" :key="cat.categoryId" :value="cat.categoryId">
+            {{ cat.categoryName }}
+          </option>
+        </select>
       </div>
-      <select v-model="sortKey" @change="sortProducts" class="sort-select select-lg">
-        <option value="registerDate">등록일순</option>
-        <option value="modifyDate">수정일순</option>
-        <option value="price">가격순</option>
-        <option value="sales">판매량순</option>
-        <option value="reviewCount">리뷰수순</option>
-      </select>
+      <div class="toolbar-center">
+        <input
+          type="text"
+          v-model="searchKeyword"
+          placeholder="상품명, 상품번호 검색"
+          @keyup.enter="searchProducts"
+          class="search-input"
+        />
+        <button class="btn-main search-btn" @click="searchProducts">검색</button>
+      </div>
+      <div class="toolbar-right">
+        <select v-model="sortKey" @change="sortProducts" class="sort-select">
+          <option value="createdDate">최신순</option>
+          <option value="productSalesCount">판매량순</option>
+          <option value="productReviewCount">후기 많은순</option>
+          <option value="stock">재고 적은순</option>
+        </select>
+      </div>
     </div>
 
+    <!-- 상품 테이블 -->
     <div class="table-zone">
       <div class="product-table-wrap">
         <table class="product-table">
@@ -47,57 +51,76 @@
             <tr>
               <th><input type="checkbox" @change="toggleAll" :checked="allSelected" /></th>
               <th>썸네일</th>
-              <th>상품코드</th>
+              <th>상품번호</th>
               <th>상품명</th>
               <th>카테고리</th>
-              <th>가격</th>
+              <th>정상가</th>
               <th>판매가</th>
-              <th>재고수량</th>
-              <th>상품상태</th>
-              <th>노출</th>
-              <th>판매량</th>
-              <th>리뷰수</th>
+              <th>재고</th>
+              <th>상태</th>
+              <th>진열여부</th>
+              <th>판매수량</th>
+              <th>후기</th>
               <th>등록일</th>
               <th>수정일</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="product in pagedProducts" :key="product.productCode">
+            <tr v-if="loading">
+              <td colspan="14">로딩중...</td>
+            </tr>
+            <tr v-else-if="error">
+              <td colspan="14" style="color:red;">{{ error }}</td>
+            </tr>
+            <tr v-else-if="pagedProducts.length === 0">
+              <td colspan="14">상품이 없습니다.</td>
+            </tr>
+            <tr
+              v-for="product in pagedProducts"
+              :key="product.productId"
+              :class="{ 'row-inactive': product.displayYn === 'N' }"
+            >
               <td>
-                <input type="checkbox" v-model="selectedProducts" :value="product.productCode" />
+                <input type="checkbox" v-model="selectedProducts" :value="product.productId" />
               </td>
               <td class="td-thumb">
-                <img :src="product.thumbnailUrl" alt="썸네일" class="thumb-lg" />
+                <img :src="product.mainImage" alt="썸네일" class="thumb-lg" />
               </td>
-              <td>{{ product.productCode }}</td>
+              <td>{{ product.productId }}</td>
               <td>
-  <router-link
-    :to="{ name: 'ProductDetail', params: { productCode: product.productCode } }"
-    class="review-link">
-    {{ product.productName }}
-  </router-link>
-</td>
-              <td>{{ product.category }}</td>
+                <router-link :to="{ name: 'ProductDetail', params: { productCode: product.productId } }">
+                  {{ product.name }}
+                </router-link>
+              </td>
+              <td>
+                {{ [product.mainCategoryName, product.midCategoryName, product.subCategoryName].filter(Boolean).join(' > ') }}
+              </td>
               <td>{{ currency(product.price) }}</td>
               <td>{{ currency(product.salePrice) }}</td>
-              <td>{{ product.stockQuantity }}</td>
-              <td>{{ product.status }}</td>
+              <td>{{ product.stock }}</td>
+              <td>{{ statusMap[product.productStatus] || product.productStatus }}</td>
               <td>
                 <label class="switch">
-                  <input type="checkbox" :checked="product.visible" @change="toggleVisible(product)" />
+                  <input
+                    type="checkbox"
+                    v-model="product.displayYn"
+                    true-value="Y"
+                    false-value="N"
+                    @change="toggleDisplayYn(product)"
+                  />
                   <span class="slider"></span>
                 </label>
               </td>
-              <td>{{ product.sales }}</td>
-              <td>{{ product.reviewCount }}</td>
-              <td>{{ product.registerDate }}</td>
-              <td>{{ product.modifyDate }}</td>
+              <td>{{ product.productSalesCount }}</td>
+              <td>{{ product.productReviewCount }}</td>
+              <td>{{ formatDate(product.createdDate) }}</td>
+              <td>{{ formatDate(product.updatedDate) }}</td>
             </tr>
           </tbody>
         </table>
       </div>
-      <!-- 테이블 아래 별도 줄: 페이징 + 버튼 -->
       <div class="table-bottom-bar">
+        <div class="left-dummy"></div>
         <div class="pagination-wrapper">
           <div class="pagination">
             <button class="btn-main" @click="prevPage" :disabled="currentPage === 1">이전</button>
@@ -122,154 +145,293 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import axios from 'axios'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
-const products = ref([
-  {
-    productCode: 'P001',
-    productName: '상품1',
-    category: '의류',
-    price: 30000,
-    salePrice: 25000,
-    stockQuantity: 100,
-    status: '판매중',
-    visible: true,
-    sales: 150,
-    reviewCount: 20,
-    registerDate: '2025-06-01',
-    modifyDate: '2025-06-10',
-    thumbnailUrl: 'https://via.placeholder.com/88x88?text=1'
-  },
-  {
-    productCode: 'P002',
-    productName: '상품2',
-    category: '전자제품',
-    price: 50000,
-    salePrice: 45000,
-    stockQuantity: 50,
-    status: '판매중지',
-    visible: false,
-    sales: 80,
-    reviewCount: 10,
-    registerDate: '2025-05-15',
-    modifyDate: '2025-06-05',
-    thumbnailUrl: 'https://via.placeholder.com/88x88?text=2'
-  },
-  {
-    productCode: 'P003',
-    productName: '상품3',
-    category: '가전',
-    price: 150000,
-    salePrice: 140000,
-    stockQuantity: 30,
-    status: '품절',
-    visible: true,
-    sales: 200,
-    reviewCount: 50,
-    registerDate: '2025-04-20',
-    modifyDate: '2025-05-30',
-    thumbnailUrl: 'https://via.placeholder.com/88x88?text=3'
-  }
-])
-
-const categories = ['의류', '전자제품', '가전']
-
-const statusTab = ref('')
-const selectedCategory = ref('')
-const searchKeyword = ref('')
-const sortKey = ref('registerDate')
+const products = ref([])
+const totalElements = ref(0)
+const loading = ref(false)
+const error = ref('')
 const selectedProducts = ref([])
 const currentPage = ref(1)
 const pageSize = 10
 
-const statusTabs = computed(() => [
-  { label: '전체', value: '', count: products.value.length },
-  { label: '판매중', value: '판매중', count: products.value.filter(p => p.status === '판매중').length },
-  { label: '판매중지', value: '판매중지', count: products.value.filter(p => p.status === '판매중지').length },
-  { label: '품절', value: '품절', count: products.value.filter(p => p.status === '품절').length }
-])
+const statusCounts = ref({
+  ALL: 0,
+  ACTIVE: 0,
+  INACTIVE: 0,
+  SOLD_OUT: 0
+})
 
-const filteredProducts = computed(() => {
-  let filtered = products.value
-  if (statusTab.value) filtered = filtered.filter(p => p.status === statusTab.value)
-  if (selectedCategory.value) filtered = filtered.filter(p => p.category === selectedCategory.value)
-  if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase()
-    filtered = filtered.filter(p =>
-      p.productName.toLowerCase().includes(keyword) ||
-      p.productCode.toLowerCase().includes(keyword)
-    )
+const statusTabs = [
+  { label: '전체', value: 'ALL' },
+  { label: '판매중', value: 'ACTIVE' },
+  { label: '판매중지', value: 'INACTIVE' },
+  { label: '품절', value: 'SOLD_OUT' }
+]
+
+const statusMap = {
+  ACTIVE: '판매중',
+  INACTIVE: '판매중지',
+  SOLD_OUT: '품절'
+}
+
+const statusTab = ref('ALL')
+const selectedCategory = ref('')
+const searchKeyword = ref('')
+const sortKey = ref('createdDate')
+const categories = ref([])
+
+async function fetchCategories() {
+  try {
+    const res = await axios.get('api/categories/main')
+    if (Array.isArray(res.data)) {
+      categories.value = res.data.filter(c => c !== null && c.categoryId)
+    } else {
+      categories.value = []
+    }
+  } catch (e) {
+    categories.value = []
   }
-  return filtered
-})
+}
 
-const sortedProducts = computed(() => {
-  return [...filteredProducts.value].sort((a, b) => {
-    if (sortKey.value === 'registerDate') return new Date(b.registerDate) - new Date(a.registerDate)
-    if (sortKey.value === 'modifyDate') return new Date(b.modifyDate) - new Date(a.modifyDate)
-    if (sortKey.value === 'price') return b.price - a.price
-    if (sortKey.value === 'sales') return b.sales - a.sales
-    if (sortKey.value === 'reviewCount') return b.reviewCount - a.reviewCount
-    return 0
-  })
-})
+async function fetchProducts() {
+  loading.value = true
+  error.value = ''
+  try {
+    const params = {
+      page: currentPage.value - 1,
+      size: pageSize,
+      sort: sortKey.value === 'stock' ? 'stock,asc' : `${sortKey.value},desc`,
+      status: statusTab.value === 'ALL' ? undefined : statusTab.value,
+      categoryId: selectedCategory.value || undefined,
+      keyword: searchKeyword.value
+    }
+    Object.keys(params).forEach(key => {
+      if (params[key] === '' || params[key] === undefined) delete params[key]
+    })
 
-const totalPages = computed(() => Math.ceil(sortedProducts.value.length / pageSize))
+    const res = await axios.get('/api/products', { params })
+    products.value = res.data.content
+    totalElements.value = res.data.totalElements
+    statusCounts.value = res.data.statusCounts || {
+      ALL: 0, ACTIVE: 0, INACTIVE: 0, SOLD_OUT: 0
+    }
+  } catch (e) {
+    error.value = '상품 목록을 불러오는 데 실패했습니다.'
+  } finally {
+    loading.value = false
+  }
+}
 
-const pagedProducts = computed(() => {
-  const start = (currentPage.value - 1) * pageSize
-  return sortedProducts.value.slice(start, start + pageSize)
-})
+const totalPages = computed(() => Math.ceil(totalElements.value / pageSize))
+const pagedProducts = computed(() => products.value)
 
-function setStatusTab(tab) {
-  statusTab.value = tab
+function setStatusTab(tabValue) {
+  statusTab.value = tabValue
   currentPage.value = 1
+  fetchProducts()
 }
-function toggleAll(event) {
-  selectedProducts.value = event.target.checked
-    ? pagedProducts.value.map(p => p.productCode)
-    : []
+function onCategoryChange() {
+  currentPage.value = 1
+  fetchProducts()
 }
-function searchProducts() { currentPage.value = 1 }
-function filterProducts() { currentPage.value = 1 }
-function sortProducts() { currentPage.value = 1 }
-function prevPage() { if (currentPage.value > 1) currentPage.value-- }
-function nextPage() { if (currentPage.value < totalPages.value) currentPage.value++ }
-function goToPage(page) { currentPage.value = page }
-function currency(value) { return '₩' + value.toLocaleString() }
+function searchProducts() {
+  currentPage.value = 1
+  fetchProducts()
+}
+function sortProducts() {
+  currentPage.value = 1
+  fetchProducts()
+}
+function prevPage() {
+  if (currentPage.value > 1) {
+    currentPage.value--
+    fetchProducts()
+  }
+}
+function nextPage() {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+    fetchProducts()
+  }
+}
+function goToPage(page) {
+  currentPage.value = page
+  fetchProducts()
+}
+
+function currency(value) {
+  if (value == null) return '-'
+  return '₩' + value.toLocaleString()
+}
+function formatDate(date) {
+  if (!date) return ''
+  return date.toString().slice(0, 10)
+}
+
 const allSelected = computed(() =>
   pagedProducts.value.length > 0 &&
-  pagedProducts.value.every(p => selectedProducts.value.includes(p.productCode))
+  pagedProducts.value.every(p => selectedProducts.value.includes(p.productId))
 )
-function registerProduct() { router.push('/product/register') }
-function toggleVisible(product) { product.visible = !product.visible }
+function toggleAll(event) {
+  selectedProducts.value = event.target.checked
+    ? pagedProducts.value.map(p => p.productId)
+    : []
+}
+function registerProduct() {
+  router.push('/product/register')
+}
+
+// 진열여부 토글 (Y/N) API 호출
+async function toggleDisplayYn(product) {
+  const prev = product.displayYn === 'Y' ? 'N' : 'Y'
+  try {
+    await axios.post('/api/products/display-yn', {
+      productId: product.productId,
+      displayYn: product.displayYn
+    })
+    // 성공시 별도 처리 필요 없음
+  } catch (e) {
+    // 실패 시 롤백
+    product.displayYn = prev
+    alert('진열여부 변경에 실패했습니다.')
+  }
+}
+
 function toggleVisibleSelected() {
   if (selectedProducts.value.length === 0) {
-    alert('노출상태를 변경할 상품을 선택하세요.');
-    return;
+    alert('노출상태를 변경할 상품을 선택하세요.')
+    return
   }
   if (window.confirm('선택하신 상품의 노출 상태를 변경하시겠습니까?')) {
     products.value.forEach(product => {
-      if (selectedProducts.value.includes(product.productCode)) {
-        product.visible = !product.visible
+      if (selectedProducts.value.includes(product.productId)) {
+        product.displayYn = product.displayYn === 'Y' ? 'N' : 'Y'
+        toggleDisplayYn(product)
       }
     })
     selectedProducts.value = []
     alert('선택된 상품의 노출상태가 변경되었습니다.')
   }
 }
+
+onMounted(async () => {
+  await fetchCategories()
+  await fetchProducts()
+})
 </script>
 
+
 <style scoped>
+/* 토글이 꺼진(미진열) 상품 행 흐리게 표시 */
+.row-inactive {
+  opacity: 0.5;
+}
+.product-table .switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+}
+.product-table .switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.product-table .slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 20px;
+}
+.product-table .switch input:checked + .slider {
+  background-color: #2196F3;
+}
+.product-table .slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+.product-table .switch input:checked + .slider:before {
+  transform: translateX(16px);
+}
 .product-list-page {
   width: 100%;
   min-height: 100vh;
   padding: 32px 0 0 0;
   box-sizing: border-box;
 }
+
+.category-select,
+.sort-select {
+  height: 44px;
+  min-width: 200px;
+  
+  font-size: 1rem;
+  padding: 0.38rem 0.6rem;
+  background: #f7f9fd;
+  border: 1px solid #e2e7f3;
+  border-radius: 6px;
+}
+
+.product-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 3rem;
+  margin-bottom: 1.4rem;
+  padding: 0 0 18px 0;
+  box-sizing: border-box;
+  gap: 24px;
+}
+
+.toolbar-left,
+.toolbar-right {
+  flex-shrink: 0;
+}
+
+.toolbar-center {
+  display: flex;
+  align-items: center;
+  justify-content: center; /* ← 중앙 정렬 핵심 */
+  gap: 8px; /* 버튼과 입력창 간격 */
+  flex: 1;
+}
+
+.search-input {
+  width: 600px; /* ← 너가 원하는 값으로 조절 */
+  height: 44px;
+  padding: 0 14px;
+  font-size: 1.08rem;
+  border-radius: 7px;
+  border: 1px solid #d7d7e3;
+  background: #fafbfc;
+  box-sizing: border-box;
+  line-height: 44px;
+}
+
+.search-btn {
+  flex-shrink: 0;
+  height: 44px;
+  padding: 0 24px;
+  font-size: 1rem;
+  border-radius: 7px;
+  white-space: nowrap;
+}
+
 .table-zone {
   width: 100%;
   max-width: 100%;
@@ -305,33 +467,42 @@ function toggleVisibleSelected() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
-  margin: 36px 0 0 0;
-  gap: 0;
+  margin-top: 36px;
+  gap: 1.2rem;
 }
+
+.left-dummy {
+  width: 200px; /* 버튼 영역과 균형 맞추기 위한 너비 */
+}
+
 .pagination-wrapper {
-  flex: 1 1 0;
+  flex: 1;
   display: flex;
   justify-content: center;
   align-items: center;
-  min-width: 0;
-  width: 100%;
 }
+
 .pagination {
   display: flex;
   gap: 0.5rem;
   align-items: center;
   justify-content: center;
-  overflow-x: auto;
   white-space: nowrap;
-  width: 100%;
-  scrollbar-width: thin;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+.pagination::-webkit-scrollbar {
+  display: none;
+}
+
 .bottom-btns {
   display: flex;
   gap: 16px;
   justify-content: flex-end;
+  flex-shrink: 0;
+  min-width: 200px; /* 왼쪽 dummy와 균형 맞춤 */
 }
+
 .btn-main {
   background: #2563eb;
   color: #fff;
@@ -360,17 +531,6 @@ function toggleVisibleSelected() {
 }
 .btn-main:hover {
   background: #1746a2;
-}
-.select-lg {
-  width: 210px !important;
-  min-width: 210px !important;
-  max-width: 210px !important;
-  height: 48px !important;
-  font-size: 1.08rem;
-  padding: 0 16px;
-  box-sizing: border-box;
-  vertical-align: middle;
-  line-height: 48px;
 }
 .td-thumb {
   width: 100px;
@@ -428,20 +588,5 @@ function toggleVisibleSelected() {
 .status-tab { font-size: 1.13rem; font-weight: 700; color: #8b95a1; cursor: pointer; padding: 0 0 12px 0; transition: color 0.18s, border-bottom 0.18s; border-bottom: 3px solid transparent; display: flex; align-items: flex-end; background: none; letter-spacing: -0.5px; }
 .status-tab.active { color: #2563eb; border-bottom: 3px solid #2563eb; background: none; }
 .tab-count { font-size: 1.02em; margin-left: 7px; color: #b3b9c9; font-weight: 600; }
-.toolbar-spacer { height: 48px; }
-.product-toolbar-row { display: flex; align-items: flex-start; justify-content: space-between; width: 100%; margin-bottom: 1.2rem; gap: 0; background: none; padding: 0 0 18px 0; box-sizing: border-box; }
-.category-select, .sort-select { height: 48px; }
-.category-select { min-width: 140px; max-width: 180px; font-size: 1rem; padding: 0.38rem 0.6rem; background: #f7f9fd; border: 1px solid #e2e7f3; border-radius: 6px; align-self: flex-start; }
-.sort-select { min-width: 140px; max-width: 180px; font-size: 1rem; padding: 0.38rem 0.6rem; background: #f7f9fd; border: 1px solid #e2e7f3; border-radius: 6px; align-self: flex-start; }
-.toolbar-center { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 18px; }
-.search-bar { width: 100%; max-width: 700px; display: flex; align-items: center; gap: 0.7rem; margin: 0 auto; }
-.search-bar input[type="text"] { flex: 1 1 0; padding: 0.54rem 1rem; font-size: 1.14rem; border-radius: 7px; border: 1px solid #d7d7e3; background: #fafbfc; height: 48px; max-width: 700px; }
-@media (max-width: 1300px) {
-  .table-zone, .table-bottom-bar { max-width: 100vw; }
-}
-@media (max-width: 900px) {
-  .table-bottom-bar { flex-direction: column; gap: 18px; align-items: stretch; }
-  .bottom-btns { justify-content: stretch; }
-  .pagination-wrapper { width: 100%; justify-content: center; margin-bottom: 12px; }
-}
+
 </style>
