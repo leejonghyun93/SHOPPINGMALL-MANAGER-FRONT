@@ -6,9 +6,11 @@ import DefaultLayout from './components/layout/DefaultLayout.vue'
   <DefaultLayout>
     <Suspense>
       <template #default>
-        <transition name="fade" mode="out-in">
-          <router-view :key="$route.fullPath" />
-        </transition>
+        <router-view v-slot="{ Component }">
+          <transition name="fade" mode="out-in">
+            <component :is="Component" />
+          </transition>
+      </router-view>
       </template>
       <template #fallback>
         <div class="loading">로딩 중입니다...</div>
