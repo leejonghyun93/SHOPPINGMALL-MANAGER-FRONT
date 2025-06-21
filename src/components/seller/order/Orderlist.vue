@@ -41,7 +41,7 @@
             <tr>
               <th>진행상태</th>
               <td colspan="5">
-                <label><input type="checkbox" /> 결제대기</label>
+                <!-- <label><input type="checkbox" /> 결제대기</label> -->
                 <label><input type="checkbox" /> 결제완료</label>
                 <label><input type="checkbox" /> 배송준비</label>
                 <label><input type="checkbox" /> 배송중</label>
@@ -53,23 +53,9 @@
               <th>결제수단</th>
               <td colspan="5">
                 <label><input type="checkbox" /> 카드결제</label>
-                <label><input type="checkbox" /> 무통장입금</label>
+                <label><input type="checkbox" /> 포인트결제</label>
                 <label><input type="checkbox" /> 카카오페이</label>
-                <label><input type="checkbox" /> 페이팔</label>
-              </td>
-            </tr>
-            <tr>
-              <th>회원구분</th>
-              <td colspan="2">
-                <label><input type="radio" name="userType" checked /> 전체</label>
-                <label><input type="radio" name="userType" /> 회원</label>
-                <label><input type="radio" name="userType" /> 비회원</label>
-              </td>
-              <th>상품타입</th>
-              <td colspan="2">
-                <label><input type="radio" name="productType" checked /> 전체</label>
-                <label><input type="radio" name="productType" /> 배송상품</label>
-                <label><input type="radio" name="productType" /> 티켓상품</label>
+                <label><input type="checkbox" /> 휴대폰결제</label>
               </td>
             </tr>
             <tr>
@@ -115,7 +101,10 @@
           <option>주문일</option>
         </select>
         <select>
+          <option>10개씩</option>
           <option>20개씩</option>
+          <option>50개씩</option>
+          <option>100개씩</option>
         </select>
       </div>
     </div>
@@ -125,7 +114,7 @@
       <table class="rounded-order-table">
         <thead>
           <tr>
-            <th><input type="checkbox" /></th>
+            <th><input type="checkbox" v-model="allSelected" @change="toggleAll" /></th>
             <th>No</th>
             <th>주문번호/주문자</th>
             <th>상품</th>
@@ -134,31 +123,33 @@
             <th>관리</th>
           </tr>
         </thead>
-        <tbody>
-          <tr v-for="(order, i) in orders" :key="order.orderNo">
-            <td><input type="checkbox" /></td>
+        <tbody >
+          
+          <tr v-for="(order, i) in orders" :key="order.order_id">
+            <td><input type="checkbox" :value="order.order_id" v-model="selectedOrders" /></td>
             <td>{{ orders.length - i }}</td>
             <td>
-              <div class="order-num">{{ order.orderNo }}</div>
-              <div class="order-user">{{ order.user }}</div>
+              <div class="order-num">{{ order.order_id }}</div>
+              <div class="order-user">{{ order.user_name }}({{ order.user_id }})</div>
             </td>
             <td>
-              <div class="product" v-for="(p, idx) in order.products" :key="idx">
-                <img :src="p.image" />
+              <div class="product" v-for="(p, idx) in order.orderItems" :key="idx">
+                <img :src="p.image_url" />
                 <div>
                   <div class="product-name">{{ p.name }}</div>
                   <div class="product-device">PC</div>
                 </div>
               </div>
             </td>
+            
             <td>
               <div class="status status-green">배송상품</div>
               <div class="status status-blue">결제완료</div>
-              <div class="price">0원</div>
+              <div class="price">{{ order.total_price }}원</div>
             </td>
-            <td>{{ order.date }}</td>
+            <td>{{ order.order_date }}</td>
             <td class="action-buttons">
-              <router-link :to="`/order/detail/?order_id=${orders.orderNo}`" class="action-button-link">상세보기</router-link>
+              <router-link :to="`/order/detail/?order_id=${order.order_id}`" class="action-button-link">상세보기</router-link>
               <button>주문취소</button>
               <button disabled>주문서</button>
             </td>
@@ -186,54 +177,96 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
+import axios from 'axios'
 
 const currentPage = ref(1)
 const totalPages = ref(5) // 원하는 만큼 숫자 넣기 (예: 5페이지)
 const showDetail = ref(false)
 
+// 선택 / 전체선택
+const selectedOrders = ref([]) // 선택된 주문번호를 저장할 배열
+const allSelected = ref(false) // 전체 선택 여부
+
+const orders = ref([])
+
+const searchCondition = reactive({
+  order_id: '',
+  user_id: '',
+  order_date: '',
+  order_status: '',
+  total_price: '',
+  user_name: '',
+  orderItems: [{ 
+    name: '',
+    image_url: '', 
+    quantity: '',
+    },
+  ]
+})
+
 const prevPage = () => {
   if (currentPage.value > 1) {
     currentPage.value--
+    searchOrders();
   }
 }
 
 const nextPage = () => {
   if (currentPage.value < totalPages.value) {
     currentPage.value++
+    searchOrders();
   }
 }
 
 const goToPage = (page) => {
   currentPage.value = page
+  searchOrders();
 }
-const orders = [
-  {
-    orderNo: '16910-20314-69919',
-    user: '관리자 (master)',
-    date: '2025-06-18 (14:24:38)',
-    products: [
-      { name: '유기농 통밀빵', image: 'https://via.placeholder.com/50' },
-      { name: '명장 초코 도넛', image: 'https://via.placeholder.com/50' }
-    ]
-  },
-  {
-    orderNo: '07613-10021-48450',
-    user: '관리자 (master)',
-    date: '2025-06-18 (14:22:39)',
-    products: [
-      { name: '오리지널 & 생크림 도넛', image: 'https://via.placeholder.com/50' }
-    ]
-  },
-  {
-    orderNo: '87825-20831-43991',
-    user: '관리자 (master)',
-    date: '2025-06-18 (14:21:56)',
-    products: [
-      { name: '오렌지 크림 도넛', image: 'https://via.placeholder.com/50' }
-    ]
+
+const toggleAll = () => {
+  if (allSelected.value) {
+    selectedOrders.value = orders.value.map(o => o.order_id)
+  } else {
+    selectedOrders.value = []
   }
-]
+}
+
+watch(selectedOrders, (newVal) => {
+  allSelected.value = newVal.length === orders.value.length
+})
+
+// 검색 실행
+const searchOrders = async () => {
+  try {
+    const response = await axios.get('/api/order/', {
+      params: {
+        order_id: searchCondition.order_id,
+        user_id: searchCondition.user_id,
+        order_date: searchCondition.order_date,
+        order_status: searchCondition.order_status,
+        total_price: searchCondition.total_price,
+        user_name: searchCondition.user_name,
+        name: searchCondition.orderItems[0].name,
+        image_url: searchCondition.orderItems[0].image_url, 
+        quantity: searchCondition.orderItems[0].quantity,
+       }
+      })
+    
+    // orders.splice(0, orders.value.length, ...response.data)
+    orders.value = response.data.list
+    console.log('받은 데이터:', response.data)
+    console.log('🔥 전체 orders 구조:', JSON.stringify(orders.value, null, 2))
+  } catch (error) {
+    console.error('검색 실패:', error)
+    alert('검색 중 오류 발생')
+  }
+}
+
+onMounted(() => {
+  searchOrders()
+})
+
 </script>
 
 <style scoped src="@/assets/order/order.css"></style>

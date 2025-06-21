@@ -79,7 +79,7 @@ h3 {
   margin-bottom: 24px;
 }
 
-.benefit-box,
+/* .benefit-box,
 .invoice-box {
   flex: 1;
   border: 1px solid #ddd;
@@ -100,7 +100,50 @@ h3 {
   justify-content: space-between;
   padding: 6px 0;
   border-bottom: 1px dotted #ccc;
+} */
+
+
+.invoice-box {
+  flex: 1;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 16px;
+  background: #fafafa;
 }
+
+
+.invoice-box ul {
+  list-style: none;
+  padding: 0;
+}
+
+
+.invoice-box li {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px dotted #ccc;
+}
+
+
+/* .payment-box {
+  flex: 1;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 32px; 
+  background: #fafafa;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.payment-box button {
+  margin: 8px 0; 
+} */
+
 
 .order-date {
   text-align: right;
@@ -115,7 +158,7 @@ h3 {
   border: 1px solid #ddd;
   border-radius: 10px;
   background: #fff;
-}
+} 
 
 .button-group {
   margin-top: 8px;
