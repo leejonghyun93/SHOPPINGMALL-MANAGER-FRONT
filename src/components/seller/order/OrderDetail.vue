@@ -7,7 +7,7 @@
         <thead>
           <tr>
             <th>No</th>
-            <th>진행상태/상품타입</th>
+            <th>진행상태</th>
             <th>주문상품</th>
             <th>주문금액</th>
             <th>배송비</th>
@@ -18,12 +18,12 @@
           <tr v-for="(item, index) in items" :key="index">
             <td>{{ index + 1 }}</td>
             <td>
-              <div class="badge green">{{ item.item_status }}</div>
+              <!-- <div class="badge green">{{ item.item_status }}</div> -->
+              <div :class="getStatusClass(item.item_status)">{{ item.item_status }}</div>
             </td>
             <td>
               <img :src="item.item_image_url" class="product-img" />
               {{ item.item_name }}
-              <div class="badge yellow">배송대기</div>
             </td>
             <td>{{ item.item_total_price }}원</td>
             <td class="green">{{ item.item_delivery_fee }}원</td>
@@ -35,16 +35,6 @@
 
     <!-- 혜택/요약 -->
     <section class="summary-wrapper">
-      <!-- <div class="benefit-box">
-        <h4>혜택 상세정보 (할인/적립금)</h4>
-        <ul>
-          <li>주문쿠폰 <span>0원</span></li>
-          <li>상품쿠폰 <span>0원</span></li>
-          <li>적립금 사용 <span class="orange">6,016원</span></li>
-          <li>프로모션코드 <span>0원</span></li>
-          <li>적립금 <span>0원</span></li>
-        </ul>
-      </div> -->
       <div class="invoice-box">
         <h4>주문서 ({{ getOrderDetail.order_id }})</h4>
         <ul>
@@ -58,26 +48,14 @@
         <div class="order-date">주문일시 : {{ getOrderDetail.order_date }}</div>
       </div>
 
-      <!-- 결제 정보 -->
-      <!-- <section class="payment-box">
-        <h4>결제 정보</h4>
-        <div class="button-group">
-          <button class="red-btn">강제취소 처리하기</button>
-          <button class="border-btn">주문목록 바로가기</button>
-        </div>
-        <p class="warning">
-          ※ 강제취소는 PG사에서 직접 결제를 취소해야 할 경우에만 사용하세요.
-        </p>
-      </section> -->
-
     </section>
 
     <!-- 결제 정보  -->
     <section class="payment-box">
       <h4>결제 정보</h4>
       <div class="button-group">
-        <button class="red-btn">강제취소 처리하기</button>
-        <button class="border-btn">주문목록 바로가기</button>
+        <button class="red-btn" @click="cancelOrder(getOrderDetail.order_id)">강제취소 처리하기</button>
+        <router-link to="/order"><button class="border-btn">주문목록 바로가기</button></router-link>
       </div>
       <p class="warning">
         ※ 강제취소는 PG사에서 직접 결제를 취소해야 할 경우에만 사용하세요.
@@ -101,10 +79,12 @@
           <tr>
             <th>부분취소시 환불한 적립금</th>
             <td>0원</td>
+            <th></th>
           </tr>
           <tr>
             <th>합계금액</th>
             <td>0원</td>
+            <th></th>
           </tr>
         </tbody>
       </table>
@@ -177,8 +157,8 @@
 
     <!-- 확인 버튼 -->
     <div class="bottom-buttons">
-      <button class="red-btn">확인</button>
-      <button class="border-btn">목록</button>
+      <button class="red-btn" @click="putOrders">확인</button>
+      <router-link to="/order"><button class="border-btn">목록</button></router-link>
     </div>
   </div>
 </template>
@@ -223,6 +203,23 @@ const getOrderDetail = reactive({
   ]
 })
 
+const getStatusClass = (status) => {
+  switch (status) {
+    case '결제완료':
+      return 'badge green'
+    case '배송준비':
+      return 'badge yellow'
+    case '배송중':
+      return 'badge orange'
+    case '배송완료':
+      return 'badge blue'
+    case '주문취소':
+      return 'badge red'
+    default:
+      return ''
+  }
+}
+
 const getOrders = async () => {
   try{
     const response = await axios.get('/api/order/detail', {
@@ -256,12 +253,43 @@ const getOrders = async () => {
 
     // 주문 상품 목록 세팅
     items.value = data.orderItems
-  console.log(getOrderDetail.order_id)
   } catch (error) {
     console.error('데이터를 불러오는데 실패하였습니다.', error)
     alert('데이터를 불러오는데 실패하였습니다.')
   }
 }
+
+const putOrders = async () => {
+  console.log("버튼 클릭됨")
+  try{
+   await axios.put('/api/order/detail', {
+      order_id: getOrderDetail.order_id,
+      recipient_name: getOrderDetail.recipient_name,
+      recipient_phone: getOrderDetail.recipient_phone,
+      order_zipcode: getOrderDetail.order_zipcode,
+      order_address_detail: getOrderDetail.order_address_detail,
+      delivery_memo: getOrderDetail.delivery_memo,
+      order_memo: getOrderDetail.order_memo
+  })
+  alert('수정 완료')
+  }catch (error) {
+    console.error('데이터를 수정하는데 실패하였습니다.', error)
+    alert('데이터를 수정하는데 실패하였습니다.')
+  }
+}
+
+
+const cancelOrder = async (order_id) => {
+  try {
+    await axios.delete(`/api/order/${order_id}`)
+    alert('주문이 취소되었습니다.')
+  } catch (error) {
+    console.error('주문 취소 실패', error)
+    alert('주문 취소에 실패했습니다.')
+  }
+}
+
+
 
 onMounted(() => {
   getOrderDetail.order_id = route.query.order_id
