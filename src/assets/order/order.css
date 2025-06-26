@@ -82,7 +82,7 @@
 .right-selects select {
   display: flex;
   gap: 8px;
-  width: 100px;
+  width: 130px;
   padding: 8px 14px;
   border: 1px solid #ccc;
   border-radius: 8px;
@@ -192,6 +192,36 @@
 .status-blue {
   background: #e8f0fe;
   color: #1967d2;
+}
+
+.status-red { 
+  background: #f8d7da;  /* 연한 빨강 */
+  color: #721c24;       /* 진한 빨강 */
+}
+
+.status-orange {
+  background: #ffe5b4;  /* 살구색 */
+  color: #a05a00;       /* 어두운 주황 */
+}
+
+.status-yellow {
+  background: #fff3cd;  /* 연노랑 */
+  color: #856404;       /* 진한 노랑 */
+}
+
+.status-purple {
+  background: #e0d4f7;  /* 연보라 */
+  color: #5e3ea1;       /* 진보라 */
+}
+
+.status-pink {
+  background: #ffbdde;  /* 연분홍 */
+  color: #ff0080;       /* 진분홍 */
+}
+
+.status-brown {
+  background: #ffd69f;  /* 연갈색 */
+  color: #944f00;       /* 진갈색 */
 }
 
 .price {
