@@ -20,7 +20,7 @@
             상품 관리
             <span class="dropdown-arrow" :class="{ open: productMenuOpen }">▼</span>
           </button>
-          <ul v-show="productMenuOpen" class="submenu">
+            <ul v-show="productMenuOpen" class="submenu">
               <li>
                 <router-link to="/product" class="submenu-link">조회/수정</router-link>
               </li>
@@ -51,13 +51,28 @@
           </a>
         </li>
         <li>
-          <a href="#" class="sidebar-link">
+          <!-- <router-link to="broadcast/register" class="sidebar-link"> -->
+          <button
+            class="sidebar-link sidebar-link-btn"
+            @click="toggleBroadcastMenu"
+            :aria-expanded="broadcastMenuOpen"
+          >
             <span class="menu-icon">
               <!-- 방송 관리: 방송(플레이) 아이콘 -->
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#fff" stroke-width="2"/><polygon points="10,8 16,12 10,16" fill="#fff"/></svg>
             </span>
-            방송 관리
-          </a>
+             방송 관리
+            <span class="dropdown-arrow" :class="{ open: broadcastMenuOpen }">▼</span>
+            </button>
+            <ul v-show="broadcastMenuOpen" class="submenu">
+              <li>
+                <router-link to="/broadcast/list" class="submenu-link">방송 조회</router-link>
+              </li>
+              <li>
+                <router-link to="/broadcast/register" class="submenu-link">방송 시작</router-link>
+              </li>
+            </ul>
+          
         </li>
         <li>
           <a href="#" class="sidebar-link">
@@ -79,6 +94,12 @@ const productMenuOpen = ref(localStorage.getItem('productMenuOpen') === 'true')
 watch(productMenuOpen, v => localStorage.setItem('productMenuOpen', v))
 function toggleProductMenu() {
   productMenuOpen.value = !productMenuOpen.value
+}
+
+const broadcastMenuOpen = ref(localStorage.getItem('broadcastMenuOpen') === 'true')
+watch(broadcastMenuOpen, v => localStorage.setItem('broadcastMenuOpen', v))
+function toggleBroadcastMenu() {
+  broadcastMenuOpen.value = !broadcastMenuOpen.value
 }
 </script>
 
