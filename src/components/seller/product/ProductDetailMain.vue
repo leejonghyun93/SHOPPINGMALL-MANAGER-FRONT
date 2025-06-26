@@ -1,8 +1,10 @@
 <template>
-  <div class="main-row">
+  <div v-if="loading" class="loading">로딩중...</div>
+  <div v-else-if="error" class="error">{{ error }}</div>
+  <div v-else class="main-row">
     <!-- 대표 이미지 -->
     <div class="product-image-area">
-      <img :src="product.image" alt="대표이미지" />
+      <img :src="getImageUrl(product.image)" alt="대표이미지" />
     </div>
 
     <!-- 상품 정보 테이블 -->
@@ -12,16 +14,67 @@
           <tbody>
             <tr><th>상품번호</th><td>{{ product.id }}</td></tr>
             <tr><th>상품명</th><td>{{ product.name }}</td></tr>
-            <tr><th>카테고리</th><td>{{ product.category }}</td></tr>
-            <tr><th>상품가격</th><td>{{ product.price.toLocaleString() }}원</td></tr>
-            <tr><th>판매가격</th><td>{{ product.salePrice.toLocaleString() }}원</td></tr>
-            <tr><th>재고수량</th><td>{{ product.stock }}</td></tr>
+            <tr>
+              <th>카테고리</th>
+              <td>
+                {{ [product.mainCategoryName, product.midCategoryName, product.subCategoryName].filter(Boolean).join(' > ') }}
+              </td>
+            </tr>
+            <tr>
+              <th>상품가격</th>
+              <td>{{ product.price != null ? product.price.toLocaleString() + '원' : '-' }}</td>
+            </tr>
+            <tr>
+              <th>판매가격</th>
+              <td>
+                <template v-if="editTarget === 'salePrice'">
+                  <input v-model.number="editValue" type="number" class="input-edit" />
+                  <button class="mini-btn" @click="saveEdit('salePrice')">저장</button>
+                  <button class="mini-btn" @click="cancelEdit">취소</button>
+                </template>
+                <template v-else>
+                  {{ product.salePrice != null ? product.salePrice.toLocaleString() + '원' : '-' }}
+                  <button class="mini-btn" @click="editField('salePrice')">변경</button>
+                </template>
+              </td>
+            </tr>
+            <tr>
+              <th>재고수량</th>
+              <td>
+                <template v-if="editTarget === 'stock'">
+                  <input v-model.number="editValue" type="number" class="input-edit" />
+                  <button class="mini-btn" @click="saveEdit('stock')">저장</button>
+                  <button class="mini-btn" @click="cancelEdit">취소</button>
+                </template>
+                <template v-else>
+                  {{ product.stock }}
+                  <button class="mini-btn" @click="editField('stock')">변경</button>
+                </template>
+              </td>
+            </tr>
             <tr><th>상품 조회수</th><td>{{ product.views }}</td></tr>
             <tr><th>판매량</th><td>{{ product.sold }}</td></tr>
             <tr><th>후기수</th><td>{{ product.reviews }}</td></tr>
-            <tr><th>판매 상태</th><td>{{ product.status }}</td></tr>
-            <tr><th>등록날짜</th><td>{{ product.createdAt }}</td></tr>
-            <tr><th>수정날짜</th><td>{{ product.updatedAt }}</td></tr>
+            <tr>
+              <th>판매 상태</th>
+              <td>
+                <template v-if="editTarget === 'status'">
+                  <select v-model="editValue" class="input-edit">
+                    <option value="ACTIVE">판매중</option>
+                    <option value="INACTIVE">판매중지</option>
+                    <option value="SOLD_OUT">품절</option>
+                  </select>
+                  <button class="mini-btn" @click="saveEdit('status')">저장</button>
+                  <button class="mini-btn" @click="cancelEdit">취소</button>
+                </template>
+                <template v-else>
+                  {{ statusMap[product.status] || product.status }}
+                  <button class="mini-btn" @click="editField('status')">변경</button>
+                </template>
+              </td>
+            </tr>
+            <tr><th>등록날짜</th><td>{{ formatDate(product.createdAt) }}</td></tr>
+            <tr><th>수정날짜</th><td>{{ formatDate(product.updatedAt) }}</td></tr>
           </tbody>
         </table>
 
@@ -35,84 +88,128 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import ProductDetailLayout from './ProductDetailLayout.vue';
+import { ref, watch, onMounted, computed } from 'vue';
+import { useRouter } from 'vue-router';
+import axios from 'axios';
 
-// props로 productCode 받기 (구조분해 할당으로 변수 선언)
-const { productCode } = defineProps({
-  productCode: String
+// --- props 선언: String, Number 모두 허용
+const props = defineProps({
+  productId: {
+    type: [String, Number],
+    required: true
+  }
 });
+
+// --- 항상 숫자로 변환해서 사용
+const numericProductId = computed(() => Number(props.productId));
 
 const router = useRouter();
-const route = useRoute();
 
-const tabs = ['상품 상세정보', '후기', '문의'];
+const product = ref(null);
+const loading = ref(true);
+const error = ref('');
+const editTarget = ref(null);
+const editValue = ref('');
 
-// 현재 탭을 URL 경로에 따라 결정
-const currentTab = ref('상품 상세정보');
+const statusMap = {
+  ACTIVE: '판매중',
+  INACTIVE: '판매중지',
+  SOLD_OUT: '품절'
+};
 
-function updateCurrentTabByRoute() {
-  const path = route.path;
-  if (path.endsWith('/reviews')) currentTab.value = '후기';
-  else if (path.endsWith('/inquiries')) currentTab.value = '문의';
-  else currentTab.value = '상품 상세정보';
+// --- 헬퍼 ---
+function mapProductDtoToViewModel(dto) {
+  return {
+    id: dto.productId,
+    image: dto.mainImage,
+    name: dto.name,
+    mainCategoryName: dto.mainCategoryName,
+    midCategoryName: dto.midCategoryName,
+    subCategoryName: dto.subCategoryName,
+    category: dto.categoryId,
+    price: dto.price,
+    salePrice: dto.salePrice,
+    stock: dto.stock,
+    views: dto.viewCount,
+    sold: dto.productSalesCount,
+    reviews: dto.productReviewCount,
+    status: dto.productStatus,
+    createdAt: dto.createdDate,
+    updatedAt: dto.updatedDate,
+  }
+}
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
+  return date.toISOString().slice(0, 10);
+}
+function goToEdit() {
+  router.push({ name: 'ProductEdit', params: { productId: product.value.id } });
 }
 
-updateCurrentTabByRoute();
-
-watch(() => route.path, () => {
-  updateCurrentTabByRoute();
-});
-
-function onTabClick(tab) {
-  currentTab.value = tab;
-
-  const basePath = `/product/${productCode}`;
-  if (tab === '상품 상세정보') {
-    router.push(basePath);
-  } else if (tab === '후기') {
-    router.push(`${basePath}/reviews`);
-  } else if (tab === '문의') {
-    router.push(`${basePath}/inquiries`);
+// --- API ---
+async function fetchProduct() {
+  loading.value = true;
+  error.value = '';
+  // productId 유효성 검사
+  if (!numericProductId.value || isNaN(numericProductId.value)) {
+    error.value = '유효하지 않은 상품 ID입니다.';
+    loading.value = false;
+    return;
+  }
+  try {
+    const res = await axios.get(`/api/products/${numericProductId.value}`);
+    product.value = mapProductDtoToViewModel(res.data);
+  } catch (err) {
+    error.value = '상품 정보를 불러오지 못했습니다.';
+    console.error(err);
+  } finally {
+    loading.value = false;
+  }
+}
+async function saveEdit(field) {
+  try {
+    await axios.patch(`/api/products/${numericProductId.value}`, { [field]: editValue.value });
+    await fetchProduct();
+    editTarget.value = null;
+    editValue.value = '';
+  } catch (err) {
+    alert('수정에 실패했습니다.');
+    console.error(err);
   }
 }
 
+// --- 이벤트 ---
+function getImageUrl(src) {
+  if (!src) return '/default-image.png';
+  // 이미 http로 시작하면 그대로, 아니면 백엔드 주소 붙이기
+  return src.startsWith('http') ? src : `http://localhost:8080${src}`;
+}
+function editField(field) {
+  editTarget.value = field;
+  editValue.value = product.value[field];
+}
+function cancelEdit() {
+  editTarget.value = null;
+  editValue.value = '';
+}
 function goToList() {
   router.push({ name: 'ProductList' });
 }
 
-function goToEdit() {
-  router.push({ name: 'ProductEdit', params: { id: productCode } });
-}
-
-// 임시 더미 데이터 (실제 API 호출 필요)
-const product = {
-  id: productCode,
-  image: 'https://via.placeholder.com/540x540?text=대표이미지',
-  name: '예시 상품명',
-  category: '카테고리명',
-  price: 25000,
-  salePrice: 22000,
-  stock: 37,
-  views: 1234,
-  sold: 57,
-  reviews: 2,
-  status: '판매중',
-  createdAt: '2025-06-01',
-  updatedAt: '2025-06-14'
-};
+// --- 마운트/감시 ---
+onMounted(fetchProduct);
+// productId가 바뀌면 다시 조회
+watch(() => numericProductId.value, fetchProduct);
 </script>
 
 <style scoped>
-/* 기존 스타일 유지 */
 .main-row {
   display: flex;
   justify-content: center;
   align-items: flex-start;
   gap: 140px;
-  margin-top: 40px;
-  margin-bottom: 20px;
+  margin: 40px 0 20px 0;
   width: 100%;
 }
 .product-image-area {
@@ -131,7 +228,6 @@ const product = {
 }
 .product-meta-table {
   flex: 1 1 0;
-  min-width: 0;
   max-width: 700px;
   margin-left: 40px;
   display: flex;
@@ -142,12 +238,10 @@ const product = {
   display: flex;
   flex-direction: column;
   height: 100%;
-  position: relative;
 }
 .product-meta-table table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 0;
   font-size: 1.08rem;
   border: 1.5px solid #c7d1e0;
 }
@@ -162,11 +256,16 @@ const product = {
   width: 120px;
   font-weight: 600;
 }
+.input-edit {
+  width: 100px;
+  padding: 4px 8px;
+  font-size: 1rem;
+  border: 1px solid #c7d1e0;
+  border-radius: 5px;
+}
 .bottom-actions {
   display: flex;
-  flex-direction: row;
   gap: 16px;
-  align-items: flex-end;
   justify-content: flex-end;
   margin-top: 16px;
 }
@@ -183,30 +282,28 @@ const product = {
   background: #eceff7;
   color: #333;
 }
-.list-btn:hover {
-  background: #dde2ee;
-}
+.list-btn:hover { background: #dde2ee; }
 .edit-btn {
   background: #3e7eff;
   color: #fff;
 }
-.edit-btn:hover {
-  background: #295fc5;
+.edit-btn:hover { background: #295fc5; }
+.mini-btn {
+  margin-left: 8px;
+  padding: 2px 10px;
+  font-size: 0.95rem;
+  border-radius: 5px;
+  border: 1px solid #d0d6e1;
+  background: #f7faff;
+  cursor: pointer;
+  transition: background 0.15s;
 }
-@media (max-width: 1200px) {
-  .main-row {
-    flex-direction: column;
-    gap: 32px;
-  }
-  .product-image-area img {
-    width: 90vw;
-    max-width: 520px;
-    height: auto;
-  }
-  .product-meta-table {
-    width: 100%;
-    max-width: none;
-    margin-left: 0;
-  }
+.mini-btn:hover { background: #e4eafd; }
+.loading, .error {
+  text-align: center;
+  font-size: 1.2rem;
+  margin-top: 80px;
 }
+.loading { color: #3e7eff; }
+.error { color: #e74c3c; }
 </style>

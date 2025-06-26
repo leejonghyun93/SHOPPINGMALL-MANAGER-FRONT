@@ -10,6 +10,11 @@ import ProductReviewDetail from '../components/seller/product/ProductReviewDetai
 import ProductDetailMain from '../components/seller/product/ProductDetailMain.vue'
 import Orderlist from '../components/seller/order/Orderlist.vue'
 import OrderDetail from '../components/seller/order/OrderDetail.vue'
+import ProductEdit from '../components/seller/product/ProductEdit.vue'
+
+import BroadCastTest from '../components/seller/broadCast/test.vue'
+import BroadCastRegister from '../components/seller/broadCast/BroadCastRegister.vue'
+import BroadCastStart from '../components/seller/broadCast/BroadCastStart.vue'
 
 const Login = () => import('@/components/login/login.vue')
 const Register = () => import('@/components/host/register.vue')
@@ -21,7 +26,8 @@ const routes = [
   { path: '/', name: 'Dashboard', component: SellerMain, meta: { requiresAuth: true }},
   { path: '/product', name: 'ProductList', component: ProductList },
   { path: '/product/register', name: 'ProductRegister', component: ProductRegister },
-  { path: '/product/:productCode', component: ProductDetail, props: true, children: [
+  { path: '/product/:productId/edit', name: 'ProductEdit', component: ProductEdit, props: true },
+  { path: '/product/:productId', component: ProductDetail, props: true, children: [
   { path: '', name: 'ProductDetail', component : ProductDetailMain, props: true },
   { path: 'reviews', name: 'ProductReviewList', component: ProductReviewList, props: true },
   { path: 'reviews/:reviewId', name: 'ProductReviewDetail', component: ProductReviewDetail, props: true },
@@ -37,6 +43,10 @@ const routes = [
   { path: '/login/changePassword', name: 'ChangePassword', component: ChangePassword },
   { path: '/order', name: 'OrderList', component: Orderlist, props: true},
   { path: '/order/detail', name: 'OrderDetail', component: OrderDetail, props: true},
+
+  { path: '/broadcast/test', name: 'BroadCastTest', component: BroadCastTest, props: true},
+  { path: '/broadcast/register', name: 'BroadCastRegister', component: BroadCastRegister, props: true},
+  { path: '/broadcast/start', name: 'BroadCastStart', component: BroadCastStart, props: true},
 ]
 
 const router = createRouter({
