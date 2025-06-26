@@ -156,7 +156,7 @@ function deleteReply() {
 }
 
 function goToReviewList() {
-  router.push({ name: 'ProductReviewList', params: { productCode: route.params.productCode } });
+  router.push({ name: 'ProductReviewList', params: { productId: Number(route.params.productId) } });
 }
 </script>
 

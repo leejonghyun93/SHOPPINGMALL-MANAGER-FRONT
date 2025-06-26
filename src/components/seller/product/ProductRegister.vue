@@ -2,24 +2,21 @@
   <div class="product-registration">
     <h2>상품 등록</h2>
     <form @submit.prevent="submitForm">
-      <!-- 1. 기본 정보 -->
+      <!-- 기본 정보 -->
       <AccordionSection title="기본 정보" :open="openBasic" @toggle="openBasic = !openBasic">
-        <div class="form-group category-row">
-          <label class="category-label">카테고리 <span class="required">*</span></label>
-          <div class="category-selects">
-            <select v-model="selectedLargeCategory" required>
-              <option disabled value="">대분류 선택</option>
-              <option v-for="cat in largeCategories" :key="cat" :value="cat">{{ cat }}</option>
-            </select>
-            <select v-model="selectedMediumCategory" required v-if="mediumCategories.length">
-              <option disabled value="">중분류 선택</option>
-              <option v-for="cat in mediumCategories" :key="cat" :value="cat">{{ cat }}</option>
-            </select>
-            <select v-model="selectedSmallCategory" required v-if="smallCategories.length">
-              <option disabled value="">소분류 선택</option>
-              <option v-for="cat in smallCategories" :key="cat" :value="cat">{{ cat }}</option>
-            </select>
-          </div>
+        <div class="category-selects">
+          <select v-model="selectedLargeCategoryId">
+            <option disabled value="">대분류 선택</option>
+            <option v-for="cat in largeCategories" :key="cat.categoryId" :value="cat.categoryId">{{ cat.categoryName }}</option>
+          </select>
+          <select v-model="selectedMediumCategoryId" required v-if="mediumCategories.length">
+            <option disabled value="">중분류 선택</option>
+            <option v-for="cat in mediumCategories" :key="cat.categoryId" :value="cat.categoryId">{{ cat.categoryName }}</option>
+          </select>
+          <select v-model="selectedSmallCategoryId" v-if="smallCategories.length">
+          <option disabled value="">소분류 선택</option>
+          <option v-for="cat in smallCategories" :key="cat.categoryId" :value="cat.categoryId">{{ cat.categoryName }}</option>
+          </select>
         </div>
         <div class="form-group">
           <label>상품명 <span class="required">*</span></label>
@@ -28,34 +25,34 @@
         </div>
       </AccordionSection>
 
-      <!-- 2. 판매 정보 -->
+      <!-- 판매 정보 -->
       <AccordionSection title="판매 정보" :open="openSale" @toggle="openSale = !openSale">
         <div class="form-group">
-          <label>상품 가격 <span class="required">*</span></label>
-          <input type="number" v-model.number="form.price" min="0" required placeholder="예: 12000" />
-          <div class="form-hint">소비자에게 노출되는 기본 가격입니다.</div>
-        </div>
-        <div class="form-group">
-          <label>상품 판매가 <span class="required">*</span></label>
-          <input type="number" v-model.number="form.salePrice" min="0" required placeholder="예: 9900" />
-          <div class="form-hint">할인 등 실제 판매가를 입력하세요.</div>
-        </div>
-        <div class="form-group">
-          <label>상품 재고 <span class="required">*</span></label>
-          <input type="number" v-model.number="form.stock" min="0" required placeholder="예: 50" />
-          <div class="form-hint">전체 재고 수량을 입력하세요.</div>
-        </div>
-        <div class="form-group">
-          <label>상품 상태 <span class="required">*</span></label>
-          <select v-model="form.status" required>
-            <option value="판매중">판매중</option>
-            <option value="품절">품절</option>
-            <option value="판매중지">판매중지</option>
-          </select>
-        </div>
+  <label>상품 가격 <span class="required">*</span></label>
+  <input type="number" v-model.number="form.price" min="0" required />
+  <div class="form-hint">소비자에게 노출되는 기본 가격입니다.</div>
+</div>
+<div class="form-group">
+  <label>상품 판매가 <span class="required">*</span></label>
+  <input type="number" v-model.number="form.salePrice" min="0" required />
+  <div class="form-hint">할인 등 실제 판매가를 입력하세요.</div>
+</div>
+<div class="form-group">
+  <label>상품 재고 <span class="required">*</span></label>
+  <input type="number" v-model.number="form.stock" min="0" required />
+  <div class="form-hint">전체 재고 수량을 입력하세요.</div>
+</div>
+<div class="form-group">
+  <label>상품 상태 <span class="required">*</span></label>
+  <select v-model="form.status" required>
+    <option value="판매중">판매중</option>
+    <option value="품절">품절</option>
+    <option value="판매중지">판매중지</option>
+  </select>
+</div>
       </AccordionSection>
 
-      <!-- 3. 상품 옵션 -->
+      <!-- 상품 옵션 -->
       <AccordionSection title="상품 옵션 (선택)" :open="openOption" @toggle="openOption = !openOption">
         <div class="form-hint option-hint">
           옵션은 등록하지 않아도 됩니다. 옵션이 있을 경우만 입력하세요.<br>
@@ -66,15 +63,15 @@
         <div v-for="(option, idx) in form.options" :key="idx" class="option-row">
           <div class="form-group option-group">
             <label>옵션명 <span class="required">*</span></label>
-            <input type="text" v-model="option.name" placeholder="예: 얼큰순대국" required maxlength="50" />
+            <input type="text" v-model="option.name" required maxlength="50" />
           </div>
           <div class="form-group option-group">
             <label>판매가 차액 <span class="required">*</span></label>
-            <input type="number" v-model.number="option.salePriceDiff" required placeholder="예: 0, +1000, -500" />
+            <input type="number" v-model.number="option.salePriceDiff" required />
           </div>
           <div class="form-group option-group">
             <label>재고 <span class="required">*</span></label>
-            <input type="number" v-model.number="option.stock" min="0" required placeholder="예: 20" />
+            <input type="number" v-model.number="option.stock" min="0" required />
           </div>
           <div class="form-group option-group">
             <label>상태 <span class="required">*</span></label>
@@ -88,17 +85,17 @@
         </div>
         <button type="button" class="btn-option-add" @click="addOption" :disabled="isSubmitting">+ 옵션 추가</button>
         <div v-if="form.options.length === 0" class="form-hint" style="color:#2563eb;">
-          옵션을 등록하지 않아도 상품 등록이 가능합니다.
+          옵션을 등록하지 않아도 상품 수정이 가능합니다.
         </div>
       </AccordionSection>
 
-      <!-- 4. 이미지 및 상세 설명 -->
+      <!-- 이미지 및 상세 설명 -->
       <AccordionSection title="이미지 및 상세 설명" :open="openImage" @toggle="openImage = !openImage">
-        <div class="form-group">
+         <div class="form-group">
           <label>대표 이미지 <span class="required">*</span></label>
-          <input type="file" @change="onMainImageChange" accept="image/*" :disabled="isSubmitting" required />
-          <div v-if="form.mainImageUrl" class="image-preview-wrapper">
-            <img :src="form.mainImageUrl" alt="대표 이미지 미리보기" class="image-preview" />
+          <input type="file" @change="onMainImageChange" accept="image/*" :disabled="isSubmitting" />
+          <div v-if="form.mainImageUrl || form.mainImage" class="image-preview-wrapper">
+            <img :src="form.mainImageUrl || getImageUrl(form.mainImage)" alt="대표 이미지 미리보기" class="image-preview" />
             <button type="button" class="btn-image-remove" @click="removeMainImage">이미지 삭제</button>
           </div>
           <div class="form-hint">
@@ -108,46 +105,23 @@
         </div>
         <div class="form-group">
           <label>상세 설명 <span class="required">*</span></label>
-          <ToastEditor v-model="form.description" :disabled="isSubmitting" />
+          <ToastEditor ref="toastEditorRef" v-model="form.description" :disabled="isSubmitting" />
           <div class="form-hint">상품의 특징, 구성, 사용법 등을 상세히 입력해 주세요.</div>
         </div>
-      </AccordionSection>
-
-      <!-- 5. 배송 및 기타 정보 -->
-      <AccordionSection title="배송 및 기타 정보" :open="openEtc" @toggle="openEtc = !openEtc">
         <div class="form-group">
-          <label>배송 정보</label>
-          <select v-model="form.shipping" :disabled="isSubmitting">
-            <option value="">선택 안함</option>
-            <option value="무료배송">무료배송</option>
-            <option value="유료배송">유료배송</option>
-            <option value="당일배송">당일배송</option>
-            <option value="새벽배송">새벽배송</option>
-          </select>
+          <label>간단 설명 <span class="required">*</span></label>
+          <input type="text" v-model="form.shortDescription" required maxlength="200" />
+          <div class="form-hint">상품의 주요 특징을 한 줄로 요약해 주세요. (최대 200자)</div>
         </div>
-        <div class="form-group">
-          <label>원산지</label>
-          <input type="text" v-model="form.origin" placeholder="예: 국내산, 미국산" :disabled="isSubmitting" />
-        </div>
-        <div class="form-group">
-          <label>유통기한</label>
-          <input type="text" v-model="form.expiration" placeholder="예: 제조일로부터 1년" :disabled="isSubmitting" />
-        </div>
-        <div class="form-group">
-          <label>보관방법</label>
-          <input type="text" v-model="form.storage" placeholder="예: 냉장보관, 실온보관" :disabled="isSubmitting" />
+        <div class="form-warning" style="margin-top:14px;">
+          ※ 상품 필수정보(원산지, 유통기한, 보관방법 등)는 상세설명에 반드시 기재해야 합니다.
         </div>
       </AccordionSection>
 
-      <div class="form-warning form-bottom-warning" v-if="formError">
-        {{ formError }}
-      </div>
-      <div class="form-success" v-if="formSuccess">
-        {{ formSuccess }}
-      </div>
-      <div class="spinner-wrapper" v-if="isSubmitting">
-        <div class="spinner"></div>
-      </div>
+      <div v-if="formError" class="form-warning">{{ formError }}</div>
+      <div v-if="formSuccess" class="form-success">{{ formSuccess }}</div>
+      <div v-if="isSubmitting" class="spinner-wrapper"><div class="spinner"/></div>
+
       <button type="submit" class="btn submit-btn" :disabled="isSubmitting">
         <span v-if="isSubmitting" class="spinner-btn"></span>
         등록하기
@@ -157,86 +131,59 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import ToastEditor from '../../ToastEditor.vue'
+import axios from 'axios'
 import AccordionSection from '@/components/common/AccordionSection.vue'
-import { onMounted } from 'vue'
+import ToastEditor from '../../ToastEditor.vue'
 
-onMounted(() => {
-  window.scrollTo({ top: 0, behavior: 'auto' })  // 또는 'smooth'
-})
 const router = useRouter()
-const openBasic = ref(false)
-const openSale = ref(false)
-const openOption = ref(false)
-const openImage = ref(false)
-const openEtc = ref(false)
-
 const isSubmitting = ref(false)
 const formError = ref('')
 const formSuccess = ref('')
 const imageError = ref('')
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024
 
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB
+const categories = ref([])
+const selectedLargeCategoryId = ref('')
+const selectedMediumCategoryId = ref('')
+const selectedSmallCategoryId = ref('')
 
-const categoryData = {
-  '가전/디지털': {
-    '컴퓨터': ['노트북', '데스크탑'],
-    '스마트폰': ['안드로이드', '아이폰']
-  },
-  '식품': {
-    '과일': ['사과', '바나나'],
-    '채소': ['상추', '시금치']
-  }
-}
-
-const largeCategories = Object.keys(categoryData)
-const mediumCategories = ref([])
-const smallCategories = ref([])
-
-const selectedLargeCategory = ref('')
-const selectedMediumCategory = ref('')
-const selectedSmallCategory = ref('')
-
-watch(selectedLargeCategory, (newVal) => {
-  if (newVal && categoryData[newVal]) {
-    mediumCategories.value = Object.keys(categoryData[newVal])
-    selectedMediumCategory.value = ''
-    smallCategories.value = []
-    selectedSmallCategory.value = ''
-  } else {
-    mediumCategories.value = []
-    selectedMediumCategory.value = ''
-    smallCategories.value = []
-    selectedSmallCategory.value = ''
-  }
-})
-
-watch(selectedMediumCategory, (newVal) => {
-  if (newVal && selectedLargeCategory.value && categoryData[selectedLargeCategory.value][newVal]) {
-    smallCategories.value = categoryData[selectedLargeCategory.value][newVal]
-    selectedSmallCategory.value = ''
-  } else {
-    smallCategories.value = []
-    selectedSmallCategory.value = ''
-  }
-})
+const openBasic = ref(false)
+const openSale = ref(false)
+const openOption = ref(false)
+const openImage = ref(false)
 
 const form = reactive({
   name: '',
+  shortDescription: '',
   mainImageFile: null,
   mainImageUrl: '',
   price: 0,
   salePrice: 0,
   stock: 0,
   status: '판매중',
-  shipping: '',
   description: '',
-  origin: '',
-  expiration: '',
-  storage: '',
   options: []
+})
+
+const toastEditorRef = ref(null)
+
+const largeCategories = computed(() => categories.value)
+const mediumCategories = computed(() =>
+  categories.value.find(c => c.categoryId === selectedLargeCategoryId.value)?.children || []
+)
+const smallCategories = computed(() =>
+  mediumCategories.value.find(c => c.categoryId === selectedMediumCategoryId.value)?.children || []
+)
+
+onMounted(async () => {
+  window.scrollTo({ top: 0 })
+  try {
+    categories.value = (await axios.get('/api/categories/tree')).data
+  } catch {
+    formError.value = '카테고리 정보를 불러오지 못했습니다.'
+  }
 })
 
 function addOption() {
@@ -245,76 +192,58 @@ function addOption() {
 function removeOption(idx) {
   form.options.splice(idx, 1)
 }
+function removeMainImage() {
+  form.mainImageFile = null
+  form.mainImageUrl = ''
+  const fileInput = document.querySelector('input[type="file"]')
+  if (fileInput) fileInput.value = ''
+}
 
-function onMainImageChange(event) {
+function onMainImageChange(e) {
   imageError.value = ''
-  const file = event.target.files && event.target.files[0]
-  if (file) {
-    if (file.size > MAX_IMAGE_SIZE) {
-      imageError.value = '이미지 용량은 5MB 이하만 등록 가능합니다.'
-      form.mainImageFile = null
-      form.mainImageUrl = ''
-      return
-    }
-    if (!file.type.match(/^image\/(jpeg|png|gif)$/)) {
-      imageError.value = 'jpg, png, gif 파일만 등록 가능합니다.'
-      form.mainImageFile = null
-      form.mainImageUrl = ''
-      return
-    }
-    form.mainImageFile = file
-    form.mainImageUrl = URL.createObjectURL(file)
+  const file = e.target.files?.[0]
+  if (!file) return
+  if (file.size > MAX_IMAGE_SIZE) {
+    imageError.value = '이미지 용량은 5MB 이하만 등록 가능합니다.'
+    return
   }
+  if (!file.type.match(/^image\/(jpeg|png|gif)$/)) {
+    imageError.value = 'jpg, png, gif 파일만 등록 가능합니다.'
+    return
+  }
+  form.mainImageFile = file
+  form.mainImageUrl = URL.createObjectURL(file)
 }
 
 function validateForm() {
-  if (!selectedLargeCategory.value || !selectedMediumCategory.value || !selectedSmallCategory.value) {
-    formError.value = '카테고리를 모두 선택해 주세요.'
+  // 대분류, 중분류만 선택해도 등록 가능 (소분류는 선택 안 해도 됨)
+  if (!selectedLargeCategoryId.value || !selectedMediumCategoryId.value) {
+    formError.value = '카테고리를 모두 선택해 주세요. (대분류/중분류 필수)'
     return false
   }
   if (!form.name.trim()) {
     formError.value = '상품명을 입력해 주세요.'
     return false
   }
-  if (form.price === null || form.price < 0) {
-    formError.value = '상품 가격은 0 이상으로 입력해 주세요.'
-    return false
-  }
-  if (form.salePrice === null || form.salePrice < 0) {
-    formError.value = '상품 판매가는 0 이상으로 입력해 주세요.'
-    return false
-  }
-  if (form.stock === null || form.stock < 0) {
-    formError.value = '상품 재고는 0 이상으로 입력해 주세요.'
-    return false
-  }
-  if (!form.status) {
-    formError.value = '상품 상태를 선택해 주세요.'
+  if (form.price < 0 || form.salePrice < 0 || form.stock < 0) {
+    formError.value = '가격 및 재고는 0 이상으로 입력해 주세요.'
     return false
   }
   if (!form.mainImageFile) {
     formError.value = '대표 이미지를 등록해 주세요.'
     return false
   }
-  if (!form.description || !form.description.trim()) {
+  if (!form.description.replace(/<[^>]*>/g, '').trim()) {
     formError.value = '상세 설명을 입력해 주세요.'
     return false
   }
-  for (const [i, opt] of form.options.entries()) {
-    if (!opt.name.trim()) {
-      formError.value = `옵션 ${i + 1}의 옵션명을 입력해 주세요.`
-      return false
-    }
-    if (opt.salePriceDiff === null || isNaN(opt.salePriceDiff)) {
-      formError.value = `옵션 ${i + 1}의 판매가 차액을 입력해 주세요.`
-      return false
-    }
-    if (opt.stock === null || opt.stock < 0) {
-      formError.value = `옵션 ${i + 1}의 재고는 0 이상으로 입력해 주세요.`
-      return false
-    }
-    if (!opt.status) {
-      formError.value = `옵션 ${i + 1}의 상태를 선택해 주세요.`
+  if (!form.shortDescription.trim()) {
+    formError.value = '간단 설명을 입력해 주세요.'
+    return false
+  }
+  for (const [i, o] of form.options.entries()) {
+    if (!o.name.trim() || o.salePriceDiff == null || isNaN(o.salePriceDiff) || o.stock < 0 || !o.status) {
+      formError.value = `옵션 ${i + 1} 정보를 모두 입력해 주세요.`
       return false
     }
   }
@@ -322,31 +251,59 @@ function validateForm() {
   return true
 }
 
-function removeMainImage() {
-  form.mainImageFile = null
-  form.mainImageUrl = ''
-  // 파일 input도 초기화(선택된 파일 삭제)
-  const input = document.querySelector('input[type="file"]')
-  if (input) input.value = ''
-}
-
 async function submitForm() {
-  formError.value = ''
-  formSuccess.value = ''
+  formError.value = formSuccess.value = ''
   if (!validateForm()) return
-
   isSubmitting.value = true
-  await new Promise(resolve => setTimeout(resolve, 1200)) // demo용
 
-  isSubmitting.value = false
-  formSuccess.value = '상품이 성공적으로 등록되었습니다!'
-  setTimeout(() => {
-    formSuccess.value = ''
-    // 실제 라우터 경로에 맞게 수정
-    if (router && router.push) router.push('/products')
-  }, 1400)
+  try {
+    const formData = new FormData()
+    // 소분류가 선택되면 소분류, 아니면 중분류, 아니면 대분류
+    const categoryId =
+      selectedSmallCategoryId.value ||
+      selectedMediumCategoryId.value ||
+      selectedLargeCategoryId.value
+    formData.append('categoryId', categoryId)
+    formData.append('name', form.name)
+    formData.append('price', form.price)
+    formData.append('salePrice', form.salePrice)
+    formData.append('stock', form.stock)
+    formData.append('productStatus', form.status)
+    formData.append('mainImage', form.mainImageFile)
+    formData.append('productShortDescription', form.shortDescription)
+    formData.append('productDescription', form.description)
+    if (form.options.length)
+      formData.append(
+        'options',
+        JSON.stringify(
+          form.options.map(o => ({
+            optionName: o.name,
+            salePrice: Number(form.salePrice) + Number(o.salePriceDiff),
+            stock: o.stock,
+            status: o.status
+          }))
+        )
+      )
+
+    await axios.post('/api/products', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+
+    alert('상품이 성공적으로 등록되었습니다.')
+      router.push({ name: 'ProductList' })
+  } catch (e) {
+    formError.value = e.response?.data?.message || '상품 등록에 실패했습니다.'
+  } finally {
+    isSubmitting.value = false
+  }
 }
+
+// 아래는 불필요한 코드 예시 (주석 처리)
+// let isUnmounted = false
+// onUnmounted(() => { isUnmounted = true })
+// 기타 불필요한 ref, editorInstance, el.style 등도 없음
 </script>
+
 
 <style>
 .product-registration {
