@@ -1,13 +1,12 @@
 <template>
   <div class="inquiry-management">
-    <h2>상품 문의 관리</h2>
+    <h2>[{{ productName }}] 상품 문의 목록</h2>
     <table class="inquiry-table">
       <thead>
         <tr>
           <th>문의번호</th>
-          <th>상품명</th>
-          <th>문의내용</th>
           <th>작성자</th>
+          <th>문의내용</th>
           <th>등록일자</th>
           <th>공개여부</th>
           <th>답변여부</th>
@@ -15,30 +14,34 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="inquiry in pagedInquiries" :key="inquiry.id">
+        <tr
+          v-for="inquiry in pagedInquiries"
+          :key="inquiry.id"
+        >
           <td>{{ inquiry.id }}</td>
-          <td>{{ inquiry.productName }}</td>
+          <td>{{ inquiry.author }}</td>
           <td>
-            <router-link :to="{ name: 'ProductInquiryDetail', params: { id: inquiry.id } }" class="inquiry-link">
+            <router-link
+              :to="{ name: 'ProductInquiryDetail', params: { id: inquiry.id } }"
+              class="inquiry-link"
+            >
               {{ shortContent(inquiry.content) }}
             </router-link>
           </td>
-          <td>{{ inquiry.author }}</td>
-          <td>{{ inquiry.date }}</td>
+          <td>{{ formatDate(inquiry.date) }}</td>
           <td>{{ inquiry.isPublic ? '공개' : '비공개' }}</td>
           <td>
             <span :class="['answer-status', inquiry.answered ? 'answered' : 'not-answered']">
               {{ inquiry.answered ? '답변완료' : '미완료' }}
             </span>
           </td>
-          <td>{{ inquiry.answered ? inquiry.answeredAt : '-' }}</td>
+          <td>{{ inquiry.answered ? formatDate(inquiry.answeredAt) : '-' }}</td>
         </tr>
         <tr v-if="pagedInquiries.length === 0">
-          <td colspan="8" style="text-align:center;">문의 데이터가 없습니다.</td>
+          <td colspan="7" style="text-align:center;">문의 데이터가 없습니다.</td>
         </tr>
       </tbody>
     </table>
-
     <div class="inquiry-table-bottom-bar">
       <div class="inquiry-pagination-wrapper">
         <div class="pagination">
@@ -59,75 +62,71 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import axios from 'axios';
+
 const router = useRouter();
+const route = useRoute();
 
-function goToInquiryDetail(id) {
-  router.push({ name: 'InquiryDetail', params: { id } });
-}
-
-const props = defineProps({
-  productId: { type: String, required: false } // 필요에 따라 활용
-});
-
-// 샘플 문의 데이터 (실제 API 연동 시 교체)
-const inquiries = ref([
-  {
-    id: 1,
-    productName: '수박',
-    content: '배송이 언제 되나요? 빠른 답변 부탁드립니다.',
-    author: '홍길동',
-    date: '2025-06-17',
-    isPublic: true,
-    answered: true,
-    answeredAt: '2025-06-18',
-  },
-  {
-    id: 2,
-    productName: '사과',
-    content: '상품 색상 선택 가능한가요?',
-    author: '김철수',
-    date: '2025-06-16',
-    isPublic: false,
-    answered: false,
-    answeredAt: '',
-  },
-  // ...더 많은 데이터
-]);
-
-// 페이징 관련 상태
+const productId = Number(route.params.productId); // 라우트 파라미터명에 맞게 수정
+const inquiries = ref([]);
+const productName = ref('');
 const currentPage = ref(1);
-const pageSize = 5;
+const pageSize = 10;
 
 const totalPages = computed(() => Math.ceil(inquiries.value.length / pageSize));
 
 const pagedInquiries = computed(() => {
+  const sorted = [...inquiries.value].sort((a, b) =>
+    new Date(b.date) - new Date(a.date)
+  );
   const start = (currentPage.value - 1) * pageSize;
-  return inquiries.value.slice(start, start + pageSize);
+  return sorted.slice(start, start + pageSize);
 });
 
-// 문의내용 20글자 제한 함수
-function shortContent(content) {
-  return content.length > 20 ? content.slice(0, 20) + '...' : content;
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
+  return date.toISOString().slice(0, 10);
 }
-
-// 페이징 함수
+function shortContent(content) {
+  return content.length > 30 ? content.slice(0, 30) + '...' : content;
+}
 function goToPage(page) {
   currentPage.value = page;
 }
-
 function prevPage() {
-  if (currentPage.value > 1) {
-    currentPage.value--;
+  if (currentPage.value > 1) currentPage.value--;
+}
+function nextPage() {
+  if (currentPage.value < totalPages.value) currentPage.value++;
+}
+
+// 문의 데이터 불러오기 (상품코드별)
+async function fetchInquiries() {
+  try {
+    const res = await axios.get(`/api/products/${productId}/inquiries`);
+    inquiries.value = res.data?.map(item => ({
+      id: item.qnaId ?? item.QNA_ID,
+      author: item.userId ?? item.USER_ID,
+      content: item.content ?? item.CONTENT,
+      date: item.createdDate ?? item.CREATED_DATE,
+      isPublic: (item.isSecret ?? item.IS_SECRET) === 'N',
+      answered: (item.qnaStatus ?? item.QNA_STATUS) === 'ANSWERED',
+      answeredAt: item.answerDate ?? item.ANSWER_DATE
+    })) ?? [];
+    // 문의 데이터에 productName이 있다면 첫 번째 값에서 가져오기
+    if (inquiries.value.length > 0 && (res.data[0].productName || res.data[0].PRODUCT_NAME)) {
+      productName.value = res.data[0].productName ?? res.data[0].PRODUCT_NAME;
+    }
+  } catch {
+    inquiries.value = [];
+    productName.value = '';
   }
 }
 
-function nextPage() {
-  if (currentPage.value < totalPages.value) {
-    currentPage.value++;
-  }
-}
+onMounted(fetchInquiries);
 </script>
 
 <style scoped>
@@ -164,8 +163,6 @@ h2 {
 .inquiry-table td {
   background: #fff;
 }
-
-/* 답변여부 스타일 */
 .answer-status {
   display: inline-block;
   padding: 0.22em 1.1em;
@@ -181,8 +178,6 @@ h2 {
   background: #e5e7eb;
   color: #888;
 }
-
-/* 하단 바 스타일 */
 .inquiry-table-bottom-bar {
   display: flex;
   align-items: center;
@@ -208,8 +203,6 @@ h2 {
   width: 100%;
   scrollbar-width: thin;
 }
-
-/* 버튼 스타일(paste.txt 스타일 통일) */
 .btn-main {
   background: #2563eb;
   color: #fff;
@@ -226,8 +219,7 @@ h2 {
   justify-content: center;
   margin: 0 2px;
 }
-.btn-main.active,
-.pagination .btn-main.active {
+.btn-main.active {
   background: #1746a2;
   color: #fff;
 }

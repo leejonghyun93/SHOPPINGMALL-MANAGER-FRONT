@@ -45,8 +45,8 @@ watch(() => route.path, () => {
 function onTabClick(tab) {
   currentTab.value = tab;
 
-  const productCode = route.params.productCode;
-  const basePath = `/product/${productCode}`;
+  const productId = Number(route.params.productId);;
+  const basePath = `/product/${productId}`;
 
   if (tab === '상품 상세정보') {
     router.push(basePath);

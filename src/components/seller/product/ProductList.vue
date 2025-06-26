@@ -16,7 +16,12 @@
     <!-- 툴바 -->
     <div class="product-toolbar-row">
       <div class="toolbar-left">
-        <select v-if="categories && categories.length > 0" v-model="selectedCategory" @change="onCategoryChange" class="category-select">
+        <select
+          v-if="categories.length"
+          v-model="selectedCategory"
+          @change="onCategoryChange"
+          class="category-select"
+        >
           <option value="">전체 대분류</option>
           <option v-for="cat in categories" :key="cat.categoryId" :value="cat.categoryId">
             {{ cat.categoryName }}
@@ -84,11 +89,11 @@
                 <input type="checkbox" v-model="selectedProducts" :value="product.productId" />
               </td>
               <td class="td-thumb">
-                <img :src="product.mainImage" alt="썸네일" class="thumb-lg" />
+                <img :src="getImageUrl(product.mainImage)" alt="썸네일" class="thumb-lg" />
               </td>
               <td>{{ product.productId }}</td>
               <td>
-                <router-link :to="{ name: 'ProductDetail', params: { productCode: product.productId } }">
+                <router-link :to="{ name: 'ProductDetail', params: { productId: product.productId } }">
                   {{ product.name }}
                 </router-link>
               </td>
@@ -137,7 +142,7 @@
         </div>
         <div class="bottom-btns">
           <button class="btn-main" @click="registerProduct">상품 등록</button>
-          <button class="btn-main" @click="toggleVisibleSelected">노출상태 변경</button>
+          <button class="btn-main" @click="toggleVisibleSelected">진열상태 변경</button>
         </div>
       </div>
     </div>
@@ -149,6 +154,7 @@ import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
 
+// --- 상수/상태 ---
 const router = useRouter()
 
 const products = ref([])
@@ -185,15 +191,14 @@ const searchKeyword = ref('')
 const sortKey = ref('createdDate')
 const categories = ref([])
 
+// --- 데이터 요청 ---
 async function fetchCategories() {
   try {
     const res = await axios.get('api/categories/main')
-    if (Array.isArray(res.data)) {
-      categories.value = res.data.filter(c => c !== null && c.categoryId)
-    } else {
-      categories.value = []
-    }
-  } catch (e) {
+    categories.value = Array.isArray(res.data)
+      ? res.data.filter(c => c && c.categoryId)
+      : []
+  } catch {
     categories.value = []
   }
 }
@@ -203,7 +208,7 @@ async function fetchProducts() {
   error.value = ''
   try {
     const params = {
-      page: currentPage.value - 1,
+      page: currentPage.value,
       size: pageSize,
       sort: sortKey.value === 'stock' ? 'stock,asc' : `${sortKey.value},desc`,
       status: statusTab.value === 'ALL' ? undefined : statusTab.value,
@@ -220,16 +225,35 @@ async function fetchProducts() {
     statusCounts.value = res.data.statusCounts || {
       ALL: 0, ACTIVE: 0, INACTIVE: 0, SOLD_OUT: 0
     }
-  } catch (e) {
+  } catch {
     error.value = '상품 목록을 불러오는 데 실패했습니다.'
   } finally {
     loading.value = false
   }
 }
 
+// --- 계산/헬퍼 ---
 const totalPages = computed(() => Math.ceil(totalElements.value / pageSize))
 const pagedProducts = computed(() => products.value)
 
+function currency(value) {
+  if (value == null) return '-'
+  return value.toLocaleString()
+}
+function formatDate(date) {
+  if (!date) return ''
+  return date.toString().slice(0, 10)
+}
+
+const allSelected = computed(() =>
+  pagedProducts.value.length > 0 &&
+  pagedProducts.value.every(p => selectedProducts.value.includes(p.productId))
+)
+function getImageUrl(src) {
+  if (!src) return '/default-image.png'
+  return src.startsWith('http') ? src : `http://localhost:8080${src}`
+}
+// --- UI 이벤트 ---
 function setStatusTab(tabValue) {
   statusTab.value = tabValue
   currentPage.value = 1
@@ -263,20 +287,6 @@ function goToPage(page) {
   currentPage.value = page
   fetchProducts()
 }
-
-function currency(value) {
-  if (value == null) return '-'
-  return '₩' + value.toLocaleString()
-}
-function formatDate(date) {
-  if (!date) return ''
-  return date.toString().slice(0, 10)
-}
-
-const allSelected = computed(() =>
-  pagedProducts.value.length > 0 &&
-  pagedProducts.value.every(p => selectedProducts.value.includes(p.productId))
-)
 function toggleAll(event) {
   selectedProducts.value = event.target.checked
     ? pagedProducts.value.map(p => p.productId)
@@ -286,7 +296,7 @@ function registerProduct() {
   router.push('/product/register')
 }
 
-// 진열여부 토글 (Y/N) API 호출
+// --- 진열여부 토글 ---
 async function toggleDisplayYn(product) {
   const prev = product.displayYn === 'Y' ? 'N' : 'Y'
   try {
@@ -294,16 +304,13 @@ async function toggleDisplayYn(product) {
       productId: product.productId,
       displayYn: product.displayYn
     })
-    // 성공시 별도 처리 필요 없음
-  } catch (e) {
-    // 실패 시 롤백
+  } catch {
     product.displayYn = prev
     alert('진열여부 변경에 실패했습니다.')
   }
 }
-
 function toggleVisibleSelected() {
-  if (selectedProducts.value.length === 0) {
+  if (!selectedProducts.value.length) {
     alert('노출상태를 변경할 상품을 선택하세요.')
     return
   }
@@ -319,274 +326,49 @@ function toggleVisibleSelected() {
   }
 }
 
+// --- 마운트 시 데이터 로딩 ---
 onMounted(async () => {
   await fetchCategories()
   await fetchProducts()
 })
 </script>
 
-
 <style scoped>
-/* 토글이 꺼진(미진열) 상품 행 흐리게 표시 */
-.row-inactive {
-  opacity: 0.5;
-}
-.product-table .switch {
-  position: relative;
-  display: inline-block;
-  width: 36px;
-  height: 20px;
-}
-.product-table .switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-.product-table .slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-color: #ccc;
-  transition: .4s;
-  border-radius: 20px;
-}
-.product-table .switch input:checked + .slider {
-  background-color: #2196F3;
-}
-.product-table .slider:before {
-  position: absolute;
-  content: "";
-  height: 14px;
-  width: 14px;
-  left: 3px;
-  bottom: 3px;
-  background-color: white;
-  transition: .4s;
-  border-radius: 50%;
-}
-.product-table .switch input:checked + .slider:before {
-  transform: translateX(16px);
-}
-.product-list-page {
-  width: 100%;
-  min-height: 100vh;
-  padding: 32px 0 0 0;
-  box-sizing: border-box;
-}
-
-.category-select,
-.sort-select {
-  height: 44px;
-  min-width: 200px;
-  
-  font-size: 1rem;
-  padding: 0.38rem 0.6rem;
-  background: #f7f9fd;
-  border: 1px solid #e2e7f3;
-  border-radius: 6px;
-}
-
-.product-toolbar-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  margin-top: 3rem;
-  margin-bottom: 1.4rem;
-  padding: 0 0 18px 0;
-  box-sizing: border-box;
-  gap: 24px;
-}
-
-.toolbar-left,
-.toolbar-right {
-  flex-shrink: 0;
-}
-
-.toolbar-center {
-  display: flex;
-  align-items: center;
-  justify-content: center; /* ← 중앙 정렬 핵심 */
-  gap: 8px; /* 버튼과 입력창 간격 */
-  flex: 1;
-}
-
-.search-input {
-  width: 600px; /* ← 너가 원하는 값으로 조절 */
-  height: 44px;
-  padding: 0 14px;
-  font-size: 1.08rem;
-  border-radius: 7px;
-  border: 1px solid #d7d7e3;
-  background: #fafbfc;
-  box-sizing: border-box;
-  line-height: 44px;
-}
-
-.search-btn {
-  flex-shrink: 0;
-  height: 44px;
-  padding: 0 24px;
-  font-size: 1rem;
-  border-radius: 7px;
-  white-space: nowrap;
-}
-
-.table-zone {
-  width: 100%;
-  max-width: 100%;
-  margin: 0 auto;
-}
-.product-table-wrap {
-  width: 100%;
-  overflow-x: auto;
-  background: none;
-}
-.product-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #fff;
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 1px 6px rgba(60,80,120,0.03);
-}
-.product-table th, .product-table td {
-  text-align: center;
-  padding: 1.05rem 0.5rem;
-  border: 1px solid #e0e0e0;
-  font-size: 1.05rem;
-}
-.product-table th {
-  background-color: #f0f0f0;
-  font-weight: 700;
-}
-.product-table tbody tr:hover {
-  background-color: #f9f9f9;
-}
-.table-bottom-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 36px;
-  gap: 1.2rem;
-}
-
-.left-dummy {
-  width: 200px; /* 버튼 영역과 균형 맞추기 위한 너비 */
-}
-
-.pagination-wrapper {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.pagination {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.pagination::-webkit-scrollbar {
-  display: none;
-}
-
-.bottom-btns {
-  display: flex;
-  gap: 16px;
-  justify-content: flex-end;
-  flex-shrink: 0;
-  min-width: 200px; /* 왼쪽 dummy와 균형 맞춤 */
-}
-
-.btn-main {
-  background: #2563eb;
-  color: #fff;
-  border: none;
-  border-radius: 7px;
-  font-size: 1.13rem;
-  font-weight: 700;
-  padding: 0.54rem 1.6rem;
-  cursor: pointer;
-  transition: background 0.2s;
-  height: 48px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 2px;
-}
-.btn-main.active,
-.pagination .btn-main.active {
-  background: #1746a2;
-  color: #fff;
-}
-.btn-main:disabled {
-  background: #e5e7eb;
-  color: #b3b9c9;
-  cursor: not-allowed;
-}
-.btn-main:hover {
-  background: #1746a2;
-}
-.td-thumb {
-  width: 100px;
-  text-align: center;
-  padding: 0.6rem 0.2rem !important;
-}
-.thumb-lg {
-  width: 88px;
-  height: 88px;
-  object-fit: cover;
-  border-radius: 10px;
-  border: 1px solid #e0e0e0;
-  background: #f8f8f8;
-  display: block;
-  margin: 0 auto;
-}
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 36px;
-  height: 20px;
-  vertical-align: middle;
-}
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-color: #ccc;
-  border-radius: 20px;
-  transition: .3s;
-}
-.switch input:checked + .slider {
-  background-color: #2563eb;
-}
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 14px;
-  width: 14px;
-  left: 3px;
-  bottom: 3px;
-  background-color: white;
-  border-radius: 50%;
-  transition: .3s;
-}
-.switch input:checked + .slider:before {
-  transform: translateX(16px);
-}
+/* 불필요한 스타일 최소화, 공통 클래스 재사용, 가독성 개선 */
+.row-inactive { opacity: 0.5; }
+.product-table .switch { position: relative; display: inline-block; width: 36px; height: 20px; }
+.product-table .switch input { opacity: 0; width: 0; height: 0; }
+.product-table .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
+.product-table .switch input:checked + .slider { background-color: #2196F3; }
+.product-table .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+.product-table .switch input:checked + .slider:before { transform: translateX(16px); }
+.product-list-page { width: 100%; min-height: 100vh; padding: 32px 0 0 0; box-sizing: border-box; }
+.category-select, .sort-select { height: 44px; min-width: 200px; font-size: 1rem; padding: 0.38rem 0.6rem; background: #f7f9fd; border: 1px solid #e2e7f3; border-radius: 6px; }
+.product-toolbar-row { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 3rem; margin-bottom: 1.4rem; padding: 0 0 18px 0; box-sizing: border-box; gap: 24px; }
+.toolbar-left, .toolbar-right { flex-shrink: 0; }
+.toolbar-center { display: flex; align-items: center; justify-content: center; gap: 8px; flex: 1; }
+.search-input { width: 600px; height: 44px; padding: 0 14px; font-size: 1.08rem; border-radius: 7px; border: 1px solid #d7d7e3; background: #fafbfc; box-sizing: border-box; line-height: 44px; }
+.search-btn { flex-shrink: 0; height: 44px; padding: 0 24px; font-size: 1rem; border-radius: 7px; white-space: nowrap; }
+.table-zone { width: 100%; max-width: 100%; margin: 0 auto; }
+.product-table-wrap { width: 100%; overflow-x: auto; background: none; }
+.product-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 6px rgba(60,80,120,0.03); }
+.product-table th, .product-table td { text-align: center; padding: 1.05rem 0.5rem; border: 1px solid #e0e0e0; font-size: 1.05rem; }
+.product-table th { background-color: #f0f0f0; font-weight: 700; }
+.product-table tbody tr:hover { background-color: #f9f9f9; }
+.table-bottom-bar { display: flex; align-items: center; justify-content: space-between; margin-top: 36px; gap: 1.2rem; }
+.left-dummy { width: 200px; }
+.pagination-wrapper { flex: 1; display: flex; justify-content: center; align-items: center; }
+.pagination { display: flex; gap: 0.5rem; align-items: center; justify-content: center; white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
+.pagination::-webkit-scrollbar { display: none; }
+.bottom-btns { display: flex; gap: 16px; justify-content: flex-end; flex-shrink: 0; min-width: 200px; }
+.btn-main { background: #2563eb; color: #fff; border: none; border-radius: 7px; font-size: 1.13rem; font-weight: 700; padding: 0.54rem 1.6rem; cursor: pointer; transition: background 0.2s; height: 48px; display: inline-flex; align-items: center; justify-content: center; margin: 0 2px; }
+.btn-main.active, .pagination .btn-main.active { background: #1746a2; color: #fff; }
+.btn-main:disabled { background: #e5e7eb; color: #b3b9c9; cursor: not-allowed; }
+.btn-main:hover { background: #1746a2; }
+.td-thumb { width: 100px; text-align: center; padding: 0.6rem 0.2rem !important; }
+.thumb-lg { width: 88px; height: 88px; object-fit: cover; border-radius: 10px; border: 1px solid #e0e0e0; background: #f8f8f8; display: block; margin: 0 auto; }
 .status-tabs { display: flex; gap: 36px; padding: 0 0 0 18px; background: none; height: 56px; align-items: flex-end; margin-bottom: 12px; }
 .status-tab { font-size: 1.13rem; font-weight: 700; color: #8b95a1; cursor: pointer; padding: 0 0 12px 0; transition: color 0.18s, border-bottom 0.18s; border-bottom: 3px solid transparent; display: flex; align-items: flex-end; background: none; letter-spacing: -0.5px; }
 .status-tab.active { color: #2563eb; border-bottom: 3px solid #2563eb; background: none; }
 .tab-count { font-size: 1.02em; margin-left: 7px; color: #b3b9c9; font-weight: 600; }
-
 </style>
