@@ -16,6 +16,8 @@ import BroadCastTest from '../components/seller/broadCast/test.vue'
 import BroadCastRegister from '../components/seller/broadCast/BroadCastRegister.vue'
 import BroadCastStart from '../components/seller/broadCast/BroadCastStart.vue'
 
+import ChatTest from '../components/chat/ChatTest.vue'
+
 const Login = () => import('@/components/login/login.vue')
 const Register = () => import('@/components/host/register.vue')
 const FindId = () => import('@/components/login/FindId.vue')
@@ -46,7 +48,8 @@ const routes = [
 
   { path: '/broadcast/test', name: 'BroadCastTest', component: BroadCastTest, props: true},
   { path: '/broadcast/register', name: 'BroadCastRegister', component: BroadCastRegister, props: true},
-  { path: '/broadcast/start', name: 'BroadCastStart', component: BroadCastStart, props: true},
+  { path: '/broadcast/:broadcast_id', name: 'BroadCastStart', component: BroadCastStart, props: true},
+  { path: '/chat-test/:broadcastId/:role?', name: 'ChatTest', component: ChatTest, props: true }
 ]
 
 const router = createRouter({
@@ -58,7 +61,7 @@ const router = createRouter({
 })
 
 // ✅ Navigation Guard 설정
-const publicPages = ['/login', '/login/findId', '/login/findPassword', '/login/changePassword', '/host/register']
+const publicPages = ['/login', '/login/findId', '/login/findPassword', '/login/changePassword', '/host/register','/chat-test/:broadcastId/:role?']
 
 router.beforeEach((to, from, next) => {
   const isLoggedIn = !!localStorage.getItem('jwt') || !!sessionStorage.getItem('jwt')
