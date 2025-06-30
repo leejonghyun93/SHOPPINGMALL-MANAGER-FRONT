@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# pack
+/shoppingmall-manager-front/package-lock.json
+/shoppingmall-manager-front/package.json
