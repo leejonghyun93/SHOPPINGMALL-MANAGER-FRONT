@@ -48,6 +48,8 @@
         </ul>
       </div>
     </div>
+    <button @click="goToLiveChat">라이브 채팅 화면 보기</button> 
+    /* 채팅방 확인용 임시버튼 */
   </div>
 </template>
 
@@ -55,6 +57,24 @@
 import { ref, onMounted } from 'vue'
 import { Chart, registerables } from 'chart.js'
 import * as echarts from 'echarts'
+
+
+
+
+
+
+import { useRouter } from 'vue-router'
+
+const router = useRouter();
+
+function goToLiveChat() {
+  router.push('/livechat');
+}
+//채팅방 확인용 임시버튼
+
+
+
+
 
 Chart.register(...registerables)
 
