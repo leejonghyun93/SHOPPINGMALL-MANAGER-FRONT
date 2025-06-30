@@ -11,7 +11,7 @@ const route = useRoute()
 const isEmptyLayoutPage = computed(() => {
   return route.name === 'Login' || route.name === 'Register' || 
     route.name === 'FindId' || route.name === 'FindPassword' || 
-    route.name === 'ChangePassword' // 필요한 이름 추가
+    route.name === 'ChangePassword' || route.name === 'BroadCastStart'// 필요한 이름 추가
 })
 </script>
 
