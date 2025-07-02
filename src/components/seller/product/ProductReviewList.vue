@@ -89,8 +89,7 @@ import axios from 'axios';
 
 const router = useRouter();
 const route = useRoute();
-
-const productId = Number(route.params.productId); // 상품상세 라우트 파라미터명에 맞게 수정
+const productId = Number(route.params.productId);
 
 const reviews = ref([]);
 const productName = ref('');
@@ -109,19 +108,27 @@ const pagedReviews = computed(() => {
 
 function formatDate(dateStr) {
   if (!dateStr) return '';
-  const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
-  return date.toISOString().slice(0, 10);
+  return new Date(dateStr).toISOString().slice(0, 10);
 }
 function shortContent(content) {
   return content.length > 30 ? content.slice(0, 30) + '...' : content;
 }
 
-// 후기 공개여부 토글 (API 연동 필요)
+// 후기 공개여부 토글
 async function toggleVisibility(review) {
+  const token = sessionStorage.getItem('jwt') || localStorage.getItem('jwt');
   const newYn = review.displayYn === 'Y' ? 'N' : 'Y';
+
   try {
-    // 실제 API 연동
-    await axios.patch(`/api/products/${productId}/reviews/${review.reviewId}`, { displayYn: newYn });
+    await axios.put(
+      `/api/products/${productId}/reviews/${review.reviewId}/display-yn`,
+      { displayYn: newYn },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
     review.displayYn = newYn;
   } catch {
     alert('공개여부 변경에 실패했습니다.');
@@ -141,17 +148,20 @@ function nextPage() {
   if (currentPage.value < totalPages.value) currentPage.value++;
 }
 
-// 후기 데이터 불러오기 (상품코드별)
 async function fetchReviews() {
+  const token = sessionStorage.getItem('jwt') || localStorage.getItem('jwt');
   try {
-    const res = await axios.get(`/api/products/${productId}/reviews`);
+    const res = await axios.get(`/api/products/${productId}/reviews`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
     reviews.value = res.data ?? [];
-    console.log(res.data);
-    // 후기 데이터에 productName이 있다면 첫 번째 값에서 가져오기
     if (reviews.value.length > 0 && reviews.value[0].productName) {
       productName.value = reviews.value[0].productName;
     }
   } catch {
+    alert('후기 목록을 불러오는 데 실패했습니다.');
     reviews.value = [];
     productName.value = '';
   }

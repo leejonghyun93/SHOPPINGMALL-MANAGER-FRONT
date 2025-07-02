@@ -5,17 +5,26 @@
       <!-- 기본 정보 -->
       <AccordionSection title="기본 정보" :open="openBasic" @toggle="openBasic = !openBasic">
         <div class="category-selects">
-          <select v-model="selectedLargeCategoryId">
+          <!-- 대분류 셀렉트 박스 -->
+          <select v-model.number="selectedLargeCategoryId" required>
             <option disabled value="">대분류 선택</option>
-            <option v-for="cat in largeCategories" :key="cat.categoryId" :value="cat.categoryId">{{ cat.categoryName }}</option>
+            <option v-for="cat in largeCategories" :key="cat.categoryId" :value="cat.categoryId">
+              {{ cat.categoryName }}
+            </option>
           </select>
-          <select v-model="selectedMediumCategoryId" required v-if="mediumCategories.length">
-            <option disabled value="">중분류 선택</option>
-            <option v-for="cat in mediumCategories" :key="cat.categoryId" :value="cat.categoryId">{{ cat.categoryName }}</option>
-          </select>
-          <select v-model="selectedSmallCategoryId" v-if="smallCategories.length">
-          <option disabled value="">소분류 선택</option>
-          <option v-for="cat in smallCategories" :key="cat.categoryId" :value="cat.categoryId">{{ cat.categoryName }}</option>
+
+          <!-- 소분류 -->
+          <select v-model.number="selectedSmallCategoryId" required :disabled="!selectedLargeCategoryId">
+            <option disabled value="">
+              {{ !selectedLargeCategoryId ? '먼저 대분류를 선택하세요' : '소분류 선택' }}
+            </option>
+            <option
+              v-for="cat in smallCategories"
+              :key="cat.categoryId"
+              :value="cat.categoryId"
+            >
+              {{ cat.categoryName }}
+            </option>
           </select>
         </div>
         <div class="form-group">
@@ -28,28 +37,28 @@
       <!-- 판매 정보 -->
       <AccordionSection title="판매 정보" :open="openSale" @toggle="openSale = !openSale">
         <div class="form-group">
-  <label>상품 가격 <span class="required">*</span></label>
-  <input type="number" v-model.number="form.price" min="0" required />
-  <div class="form-hint">소비자에게 노출되는 기본 가격입니다.</div>
-</div>
-<div class="form-group">
-  <label>상품 판매가 <span class="required">*</span></label>
-  <input type="number" v-model.number="form.salePrice" min="0" required />
-  <div class="form-hint">할인 등 실제 판매가를 입력하세요.</div>
-</div>
-<div class="form-group">
-  <label>상품 재고 <span class="required">*</span></label>
-  <input type="number" v-model.number="form.stock" min="0" required />
-  <div class="form-hint">전체 재고 수량을 입력하세요.</div>
-</div>
-<div class="form-group">
-  <label>상품 상태 <span class="required">*</span></label>
-  <select v-model="form.status" required>
-    <option value="판매중">판매중</option>
-    <option value="품절">품절</option>
-    <option value="판매중지">판매중지</option>
-  </select>
-</div>
+          <label>상품 가격 <span class="required">*</span></label>
+          <input type="number" v-model.number="form.price" min="0" required />
+          <div class="form-hint">소비자에게 노출되는 기본 가격입니다.</div>
+        </div>
+        <div class="form-group">
+          <label>상품 판매가 <span class="required">*</span></label>
+          <input type="number" v-model.number="form.salePrice" min="0" required />
+          <div class="form-hint">할인 등 실제 판매가를 입력하세요.</div>
+        </div>
+        <div class="form-group">
+          <label>상품 재고 <span class="required">*</span></label>
+          <input type="number" v-model.number="form.stock" min="0" required />
+          <div class="form-hint">전체 재고 수량을 입력하세요.</div>
+        </div>
+        <div class="form-group">
+          <label>상품 상태 <span class="required">*</span></label>
+          <select v-model="form.status" required>
+            <option value="판매중">판매중</option>
+            <option value="품절">품절</option>
+            <option value="판매중지">판매중지</option>
+          </select>
+        </div>
       </AccordionSection>
 
       <!-- 상품 옵션 -->
@@ -91,7 +100,7 @@
 
       <!-- 이미지 및 상세 설명 -->
       <AccordionSection title="이미지 및 상세 설명" :open="openImage" @toggle="openImage = !openImage">
-         <div class="form-group">
+        <div class="form-group">
           <label>대표 이미지 <span class="required">*</span></label>
           <input type="file" @change="onMainImageChange" accept="image/*" :disabled="isSubmitting" />
           <div v-if="form.mainImageUrl || form.mainImage" class="image-preview-wrapper">
@@ -131,7 +140,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import AccordionSection from '@/components/common/AccordionSection.vue'
@@ -145,8 +154,8 @@ const imageError = ref('')
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
 
 const categories = ref([])
+
 const selectedLargeCategoryId = ref('')
-const selectedMediumCategoryId = ref('')
 const selectedSmallCategoryId = ref('')
 
 const openBasic = ref(false)
@@ -169,21 +178,32 @@ const form = reactive({
 
 const toastEditorRef = ref(null)
 
-const largeCategories = computed(() => categories.value)
-const mediumCategories = computed(() =>
-  categories.value.find(c => c.categoryId === selectedLargeCategoryId.value)?.children || []
+const largeCategories = computed(() =>
+  categories.value.filter(c => !c.parentCategoryId)
 )
-const smallCategories = computed(() =>
-  mediumCategories.value.find(c => c.categoryId === selectedMediumCategoryId.value)?.children || []
-)
+
+const smallCategories = computed(() => {
+  const parent = categories.value.find(c => c.categoryId === selectedLargeCategoryId.value)
+  console.log('🧩 선택한 대분류:', parent)
+  return parent?.children || []
+})
 
 onMounted(async () => {
   window.scrollTo({ top: 0 })
   try {
-    categories.value = (await axios.get('/api/categories/tree')).data
+    const res = await axios.get('/api/categories/tree')
+    categories.value = res.data
+    console.log('📦 전체 카테고리 트리:', categories.value)
+    console.log('🧩 전체 categories.value:', JSON.stringify(categories.value, null, 2));
   } catch {
     formError.value = '카테고리 정보를 불러오지 못했습니다.'
   }
+})
+
+watch(selectedLargeCategoryId, (val) => {
+  console.log('📌 선택한 대분류 ID:', val)
+  const matched = categories.value.filter(c => c.parentCategoryId === Number(val))
+  console.log('➡️ 매칭된 소분류:', matched)
 })
 
 function addOption() {
@@ -216,9 +236,8 @@ function onMainImageChange(e) {
 }
 
 function validateForm() {
-  // 대분류, 중분류만 선택해도 등록 가능 (소분류는 선택 안 해도 됨)
-  if (!selectedLargeCategoryId.value || !selectedMediumCategoryId.value) {
-    formError.value = '카테고리를 모두 선택해 주세요. (대분류/중분류 필수)'
+  if (!selectedLargeCategoryId.value || !selectedSmallCategoryId.value) {
+    formError.value = '카테고리를 모두 선택해 주세요. (대분류/소분류 필수)'
     return false
   }
   if (!form.name.trim()) {
@@ -257,40 +276,46 @@ async function submitForm() {
   isSubmitting.value = true
 
   try {
+    const optionList = form.options.map(opt => ({
+      optionName: opt.name,
+      salePrice: Number(form.salePrice) + Number(opt.salePriceDiff), // ✔ 판매가 기준 차액
+      stock: opt.stock,
+      status: opt.status
+    }))
+
+    const productData = {
+      categoryId: selectedSmallCategoryId.value,
+      name: form.name,
+      price: form.price,
+      salePrice: form.salePrice,
+      stock: form.stock,
+      productStatus: form.status,
+      productShortDescription: form.shortDescription,
+      productDescription: form.description,
+      options: optionList
+    }
+
     const formData = new FormData()
-    // 소분류가 선택되면 소분류, 아니면 중분류, 아니면 대분류
-    const categoryId =
-      selectedSmallCategoryId.value ||
-      selectedMediumCategoryId.value ||
-      selectedLargeCategoryId.value
-    formData.append('categoryId', categoryId)
-    formData.append('name', form.name)
-    formData.append('price', form.price)
-    formData.append('salePrice', form.salePrice)
-    formData.append('stock', form.stock)
-    formData.append('productStatus', form.status)
+    // ✅ 'product'라는 key로 전체 JSON을 Blob으로 append
+    formData.append(
+      'product',
+      new Blob([JSON.stringify(productData)], { type: 'application/json' })
+    )
+
+    // ✅ 이미지 추가
     formData.append('mainImage', form.mainImageFile)
-    formData.append('productShortDescription', form.shortDescription)
-    formData.append('productDescription', form.description)
-    if (form.options.length)
-      formData.append(
-        'options',
-        JSON.stringify(
-          form.options.map(o => ({
-            optionName: o.name,
-            salePrice: Number(form.salePrice) + Number(o.salePriceDiff),
-            stock: o.stock,
-            status: o.status
-          }))
-        )
-      )
+
+    const token = sessionStorage.getItem('jwt') || localStorage.getItem('jwt')
 
     await axios.post('/api/products', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        'Authorization': `Bearer ${token}`
+      }
     })
 
     alert('상품이 성공적으로 등록되었습니다.')
-      router.push({ name: 'ProductList' })
+    router.push({ name: 'ProductList' })
   } catch (e) {
     formError.value = e.response?.data?.message || '상품 등록에 실패했습니다.'
   } finally {
@@ -298,10 +323,6 @@ async function submitForm() {
   }
 }
 
-// 아래는 불필요한 코드 예시 (주석 처리)
-// let isUnmounted = false
-// onUnmounted(() => { isUnmounted = true })
-// 기타 불필요한 ref, editorInstance, el.style 등도 없음
 </script>
 
 

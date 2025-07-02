@@ -158,7 +158,14 @@ async function fetchProduct() {
     return;
   }
   try {
-    const res = await axios.get(`/api/products/${numericProductId.value}`);
+    const token = sessionStorage.getItem('jwt') || localStorage.getItem('jwt');
+
+
+    const res = await axios.get(`/api/products/${numericProductId.value}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
     product.value = mapProductDtoToViewModel(res.data);
   } catch (err) {
     error.value = '상품 정보를 불러오지 못했습니다.';
@@ -169,8 +176,18 @@ async function fetchProduct() {
 }
 async function saveEdit(field) {
   try {
-    await axios.patch(`/api/products/${numericProductId.value}`, { [field]: editValue.value });
-    await fetchProduct();
+    const token = sessionStorage.getItem('jwt') || localStorage.getItem('jwt');
+
+    await axios.patch(`/api/products/${numericProductId.value}`, 
+      { [field]: editValue.value },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    await fetchProduct(); // 수정 후 다시 조회
     editTarget.value = null;
     editValue.value = '';
   } catch (err) {
