@@ -16,7 +16,7 @@
         <input v-model="password" type="password" placeholder="비밀번호를 입력하세요" required />
 
         <div class="options">
-          <label><input type="checkbox" v-model="rememberMe" /> 아이디 저장</label>
+          <label><input type="checkbox" v-model="rememberMe" /> 로그인 상태 유지</label>
         </div>
         
         <div>
@@ -53,7 +53,12 @@ const handleLogin = async () => {
     const response = await axios.post('/api/login', {
       user_id: user_id.value,
       password: password.value,
-    })
+    }, {
+    withCredentials: true,
+    headers: {
+      'Content-Type': 'application/json'   // 이거 안 넣으면 백엔드는 @RequestBody 못 받음
+    }
+  })
 
     const token = response.data.token
     if (rememberMe.value) {

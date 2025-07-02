@@ -20,62 +20,6 @@
           <textarea v-model="broadcast.description"></textarea>
         </div>
 
-        <div class="form-group">
-          <label>상품 등록</label>
-          <div class="product-register">
-            <input type="text" v-model="searchKeyword" @keyup="searchProducts" placeholder="상품명 입력" />
-            <button @click="searchProducts">검색</button>
-          </div>
-        </div>
-
-        <div v-if="searchResults.length">
-          <ul>
-            <li v-for="product in searchResults" :key="product.product_id">
-              {{ product.product.name }} - {{ product.product.price }}원
-              <button @click="addProduct(product)">추가</button>
-            </li>
-          </ul>
-        </div>
-
-        <div class="form-group">
-          <label>선택된 상품</label>
-          <ul>
-            <li v-for="(item, index) in broadcast.productList" :key="index">
-              <img :src="item.product.mainImage" alt="상품 이미지" width="80" height="80" />
-               {{ item.product.name }} - {{ item.product.price }}원
-              <button @click="removeProduct(index)">삭제</button>
-            </li>
-          </ul>
-        </div>
-        
-        <div class="form-group">
-          <label>카테고리</label>
-          <select v-model="broadcast.category_id">
-            <option disabled value="">선택</option>
-            <option value="1">신선식품</option>
-            <option value="2">가공식품</option>
-            <option value="3">음료</option>
-            <option value="4">건강식품</option>
-          </select>
-        </div>
-
-        
-      </div>
-
-      <!-- 오른쪽 영역 -->
-      <div class="form-right">
-        <div class>
-          <div v-if="thumbnailPreview">
-            <img :src="thumbnailPreview" alt="썸네일 미리보기" style="max-width: 200px; margin-top: 10px;" />
-          </div>
-          <div v-else>썸네일 사진을 업로드 해주세요</div>
-        </div>
- 
-        <div class="form-group horizontal">
-          <label>썸네일 업로드</label>
-          <input type="file" @change="handleFileUpload" />
-        </div>
-
         <div class="form-group horizontal">
           <div class="radio-group">
             <label><b>공개 여부</b></label>
@@ -85,15 +29,9 @@
         </div>
 
         <div class="form-group horizontal">
-          <div class="radio-group">
-            <!-- <label>예약 설정</label>
-            <label><input type="checkbox" v-model="form.reserve" /> 예약 설정</label>
-            <div class="radio-group"> -->
-              <!-- <label>방송 시작 시간<input type="datetime-local" v-model="broadcast.schedule_start_time" v-if="form.reserve"/></label>
-              <label>방송 종료 시간<input type="datetime-local" v-model="broadcast.schedule_end_time" v-if="form.reserve"/></label> -->
-              <label>방송 시작 시간<input type="datetime-local" v-model="broadcast.schedule_start_time" /></label>
-              <label>방송 종료 시간<input type="datetime-local" v-model="broadcast.schedule_end_time" /></label>
-            <!-- </div> -->
+          <div class="radio-group2">
+            <label>방송 시작 시간<input type="datetime-local" v-model="broadcast.schedule_start_time" /></label>
+            <label>방송 종료 시간<input type="datetime-local" v-model="broadcast.schedule_end_time" /></label>
           </div>
         </div>
 
@@ -123,6 +61,84 @@
         </div>
       </div>
 
+      <!-- 오른쪽 영역 -->
+      <div class="form-right">
+        <div class="form-group">
+          <label>상품 등록</label>
+          <div class="product-register">
+            <input type="text" v-model="searchKeyword" @keyup="searchProducts" placeholder="상품명 입력" />
+            <button @click="searchProducts">검색</button>
+          </div>
+        </div>
+
+        <!-- 검색 결과 테이블 -->
+        <div v-if="searchResults.length">
+          <table class="product-table">
+            <thead>
+              <tr>
+                <th>상품명</th>
+                <th>가격</th>
+                <th>추가</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="product in searchResults" :key="product.product_id">
+                <td>{{ product.product.name }}</td>
+                <td>{{ product.product.price.toLocaleString() }}원</td>
+                <td><button @click="addProduct(product)">추가</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 선택된 상품 테이블 -->
+        <div class="form-group">
+          <label>선택된 상품</label>
+          <table class="product-table">
+            <thead>
+              <tr>
+                <th>이미지</th>
+                <th>상품명</th>
+                <th>가격</th>
+                <th>삭제</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(item, index) in broadcast.productList" :key="index">
+                <td><img :src="item.product.mainImage" alt="상품" width="50" /></td>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.product.price.toLocaleString() }}원</td>
+                <td><button @click="removeProduct(index)">❌</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="form-group">
+          <label>카테고리</label>
+          <select v-model="broadcast.category_id">
+            <option disabled value="">선택</option>
+            <option value="1">신선식품</option>
+            <option value="2">가공식품</option>
+            <option value="3">간편식/밀키트</option>
+            <option value="4">베이커리</option>
+            <option value="5">유제품/음료</option>
+            <option value="6">건강식품</option>
+            <option value="7">주방용품</option>
+            <option value="8">생활용품</option>
+            <option value="9">유아동</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>썸네일 업로드</label>
+          <div class="thumbnail-box" @click="$refs.thumbnailInput.click()">
+            <img v-if="thumbnailPreview" :src="thumbnailPreview" alt="썸네일" />
+            <span v-else>클릭하여 썸네일 업로드</span>
+          </div>
+          <input type="file" ref="thumbnailInput" @change="handleFileUpload" style="display: none;" />
+        </div>
+      </div>
     </div>
 
     <div class="btn-wrap">
@@ -339,152 +355,187 @@ onMounted(() => {
 }
 
 .title {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: bold;
-  margin-bottom: 30px;
+  margin-bottom: 32px;
+  color: #1f2937;
 }
 
-/* 그리드 */
+/* 그리드 배치 */
 .form-grid {
-  display: flex;
-  gap: 40px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
 }
 
-.form-left, .form-right {
-  flex: 1;
-}
-
-/* 공통 폼 스타일 */
+/* 공통 폼 그룹 */
 .form-group {
-  margin-bottom: 20px;
-
+  margin-bottom: 24px;
 }
 
 .form-group label {
   display: block;
+  margin-bottom: 8px;
   font-weight: 600;
-  margin-bottom: 6px;
-  color: #333;
+  color: #374151;
+  font-size: 15px;
 }
 
-.product-register {
-  display: flex;
-  align-items: center;
-  gap: 10px; /* input과 버튼 사이 간격 */
-}
-
-.product-register input[type="text"] {
-  flex: 1;
-  min-width: 0; /* input이 너무 커져서 줄바꿈 되는 현상 방지 */
-  padding: 10px;
-  font-size: 14px;
-}
-
-.product-register button {
-  padding: 10px 16px;
-  font-size: 14px;
-  white-space: nowrap; /* 줄바꿈 방지 */
-  background-color: #2b65c0;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.product-register button:hover {
-  background-color: #1e4da8;
-}
-
+/* 입력 요소 */
 input[type="text"],
 input[type="datetime-local"],
 input[type="file"],
 textarea,
 select {
   width: 100%;
-  padding: 10px 12px;
-  font-size: 14px;
+  padding: 10px 14px;
   border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border-radius: 8px;
   background-color: #fff;
-  color: #111;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  box-sizing: border-box;
+  font-size: 14px;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
 }
 
 input:focus,
 textarea:focus,
 select:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
   outline: none;
 }
 
-input::placeholder,
-textarea::placeholder {
-  color: #a0a0a0;
-  font-size: 13px;
-}
-
-/* select 화살표 커스텀 */
+/* select 화살표 */
 select {
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg fill='none' stroke='%23333' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 12px center;
+  background-position: right 14px center;
   background-size: 16px 16px;
-  padding-right: 36px;
+  padding-right: 40px;
 }
 
-/* 수평 정렬 그룹 (공개/예약) */
+/* 수평 정렬 그룹 */
 .form-group.horizontal {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
 }
 
-.form-group.horizontal label {
-  margin-bottom: 0;
-  font-weight: normal;
-}
-
-/* 썸네일 미리보기 박스 */
-.thumbnail-box {
-  background-color: #0d5e7e;
-  color: #fff;
-  height: 160px;
-  text-align: center;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-weight: bold;
-  margin-bottom: 20px;
-  border: 1px solid #336699;
-  border-radius: 6px;
-}
-
-/* 버튼 영역 */
-.btn-wrap {
-  text-align: right;
-  margin-top: 30px;
-}
-
-.btn-wrap button {
-  background-color: #2b65c0;
+/* 버튼 기본 스타일 */
+button {
+  background-color: #2563eb;
   color: white;
-  padding: 10px 30px;
-  font-size: 16px;
+  padding: 10px 18px;
   border: none;
   border-radius: 6px;
+  font-size: 14px;
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
-.btn-wrap button:hover {
-  background-color: #1e4da8;
+button:hover {
+  background-color: #1e40af;
 }
 
+/* 상품 검색 박스 */
+.product-register {
+  display: flex;
+  gap: 12px;
+}
+
+.product-register input {
+  flex: 1;
+}
+
+/* 테이블 */
+.product-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.product-table th,
+.product-table td {
+  padding: 12px 14px;
+  text-align: center;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+}
+
+.product-table th {
+  background-color: #f3f4f6;
+  font-weight: 600;
+  color: #374151;
+}
+
+.product-table td img {
+  width: 50px;
+  height: auto;
+  object-fit: cover;
+}
+
+/* 썸네일 */
+.thumbnail-box {
+  width: 100%;
+  height: 180px;
+  border: 2px dashed #cbd5e1;
+  border-radius: 8px;
+  background-color: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.thumbnail-box:hover {
+  background-color: #e0f2fe;
+  border-color: #3b82f6;
+}
+
+.thumbnail-box img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* 공개 여부 라디오 버튼 */
 .radio-group {
   display: flex;
-  gap: 10px;
+  gap: 20px;
+  align-items: center;
+}
+
+.radio-group2 {
+  display: flex;
+  gap: 80px;
+  align-items: center;
+}
+
+.radio-group2 label {
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #374151;
+}
+
+/* 하단 버튼 정렬 */
+.btn-wrap {
+  margin-top: 40px;
+  text-align: right;
+}
+
+.btn-wrap button {
+  font-size: 16px;
+  padding: 12px 30px;
 }
 </style>
