@@ -21,12 +21,13 @@
           <td>{{ inquiry.id }}</td>
           <td>{{ inquiry.author }}</td>
           <td>
-            <router-link
-              :to="{ name: 'ProductInquiryDetail', params: { id: inquiry.id } }"
-              class="inquiry-link"
-            >
-              {{ shortContent(inquiry.content) }}
-            </router-link>
+            <!-- router-link 부분 -->
+<router-link
+  :to="{ name: 'ProductInquiryDetail', params: { productId, qnaId: inquiry.id } }"
+  class="inquiry-link"
+>
+  {{ shortContent(inquiry.content) }}
+</router-link>
           </td>
           <td>{{ formatDate(inquiry.date) }}</td>
           <td>{{ inquiry.isPublic ? '공개' : '비공개' }}</td>
@@ -106,23 +107,31 @@ function nextPage() {
 // 문의 데이터 불러오기 (상품코드별)
 async function fetchInquiries() {
   try {
-    const res = await axios.get(`/api/products/${productId}/inquiries`);
+    const token = sessionStorage.getItem('jwt') || localStorage.getItem('jwt');
+
+    const res = await axios.get(`/api/products/${productId}/inquiries`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
     inquiries.value = res.data?.map(item => ({
-      id: item.qnaId ?? item.QNA_ID,
-      author: item.userId ?? item.USER_ID,
-      content: item.content ?? item.CONTENT,
-      date: item.createdDate ?? item.CREATED_DATE,
-      isPublic: (item.isSecret ?? item.IS_SECRET) === 'N',
-      answered: (item.qnaStatus ?? item.QNA_STATUS) === 'ANSWERED',
-      answeredAt: item.answerDate ?? item.ANSWER_DATE
-    })) ?? [];
-    // 문의 데이터에 productName이 있다면 첫 번째 값에서 가져오기
+  id: item.qnaId ?? item.QNA_ID,
+  author: item.userId ?? item.USER_ID,
+  content: item.content ?? item.CONTENT,
+  date: item.createdDate ?? item.CREATED_DATE,
+  isPublic: (item.isSecret ?? item.IS_SECRET) === 'N',
+  answered: (item.qnaStatus ?? item.QNA_STATUS) === 'ANSWERED',
+  answeredAt: item.answerDate ?? item.ANSWER_DATE
+})) ?? [];
+
     if (inquiries.value.length > 0 && (res.data[0].productName || res.data[0].PRODUCT_NAME)) {
       productName.value = res.data[0].productName ?? res.data[0].PRODUCT_NAME;
     }
-  } catch {
+  } catch (err) {
     inquiries.value = [];
     productName.value = '';
+    console.error('❌ 문의 데이터를 불러오지 못했습니다.', err);
   }
 }
 

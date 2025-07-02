@@ -7,17 +7,19 @@
         <div class="form-group category-row">
           <label class="category-label">카테고리 <span class="required">*</span></label>
           <div class="category-selects">
-            <select v-model="selectedLargeCategoryId" required>
+            <select v-model.number="selectedLargeCategoryId" required>
               <option disabled value="">대분류 선택</option>
-              <option v-for="cat in largeCategories" :key="cat.categoryId" :value="cat.categoryId">{{ cat.categoryName }}</option>
+              <option v-for="cat in largeCategories" :key="cat.categoryId" :value="cat.categoryId">
+                {{ cat.categoryName }}
+              </option>
             </select>
-            <select v-model="selectedMediumCategoryId" required v-if="mediumCategories.length">
-              <option disabled value="">중분류 선택</option>
-              <option v-for="cat in mediumCategories" :key="cat.categoryId" :value="cat.categoryId">{{ cat.categoryName }}</option>
-            </select>
-            <select v-model="selectedSmallCategoryId" required v-if="smallCategories.length">
-              <option disabled value="">소분류 선택</option>
-              <option v-for="cat in smallCategories" :key="cat.categoryId" :value="cat.categoryId">{{ cat.categoryName }}</option>
+            <select v-model.number="selectedSmallCategoryId" :disabled="!Number(selectedLargeCategoryId)">
+              <option disabled value="">
+                {{ !selectedLargeCategoryId ? '먼저 대분류를 선택하세요' : '소분류 선택' }}
+              </option>
+              <option v-for="cat in smallCategories" :key="cat.categoryId" :value="cat.categoryId">
+                {{ cat.categoryName }}
+              </option>
             </select>
           </div>
         </div>
@@ -58,9 +60,9 @@
       <!-- 3. 상품 옵션 -->
       <AccordionSection title="상품 옵션 (선택)" :open="openOption" @toggle="openOption = !openOption">
         <div class="form-hint option-hint">
-          옵션은 등록하지 않아도 됩니다. 옵션이 있을 경우만 입력하세요.<br>
-          옵션별 판매가는 <b>상품 판매가</b> 기준 "0" 또는 "+, - 금액"으로 입력하세요.<br>
-          예) 상품 판매가 9900원, 옵션가 0 → 9900원<br>
+          옵션은 등록하지 않아도 됩니다. 옵션이 있을 경우만 입력하세요.<br />
+          옵션별 판매가는 <b>상품 판매가</b> 기준 "0" 또는 "+, - 금액"으로 입력하세요.<br />
+          예) 상품 판매가 9900원, 옵션가 0 → 9900원<br />
           옵션가 +1000 → 10,900원, 옵션가 -500 → 9,400원
         </div>
         <div v-for="(option, idx) in form.options" :key="idx" class="option-row">
@@ -160,19 +162,16 @@ const formSuccess = ref('')
 const imageError = ref('')
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
 
-// 카테고리 트리 데이터
 const categories = ref([])
 const selectedLargeCategoryId = ref('')
-const selectedMediumCategoryId = ref('')
 const selectedSmallCategoryId = ref('')
 
-// 상품 데이터 폼
 const form = reactive({
   name: '',
   shortDescription: '',
   mainImageFile: null,
   mainImageUrl: '',
-  mainImage: '', // 기존 이미지 경로
+  mainImage: '',
   price: 0,
   salePrice: 0,
   stock: 0,
@@ -188,30 +187,39 @@ function getImageUrl(src) {
   return src.startsWith('http') ? src : `http://localhost:8080${src}`
 }
 
-// 카테고리 트리 불러오기 + 상품 데이터 불러오기
 onMounted(async () => {
-  window.scrollTo({ top: 0, behavior: 'auto' })
+  const token = sessionStorage.getItem('jwt') || localStorage.getItem('jwt')
+
   try {
-    const res = await axios.get('/api/categories/tree')
+    const res = await axios.get('/api/categories/tree', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
     categories.value = res.data
+    // ✅ 카테고리 받아온 뒤 fetchProduct 실행
+    await fetchProduct()
+    
   } catch (e) {
     formError.value = '카테고리 정보를 불러오지 못했습니다.'
   }
-  await fetchProduct()
 })
 
-// 상품 데이터 조회 및 폼에 세팅
 async function fetchProduct() {
+    formError.value = ''
   try {
-    const { data } = await axios.get(`/api/products/${productId}`)
-    // 카테고리 선택값 세팅
-    selectedLargeCategoryId.value = data.largeCategoryId || ''
-    selectedMediumCategoryId.value = data.mediumCategoryId || ''
-    selectedSmallCategoryId.value = data.smallCategoryId || ''
-    // 폼 데이터 세팅
+    const token = sessionStorage.getItem('jwt') || localStorage.getItem('jwt')
+    const { data } = await axios.get(`/api/products/${productId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    const category = resolveCategoryPath(data.categoryId)
+    console.log('🔍 categoryId:', data.categoryId)
+console.log('🔍 resolved path:', category)
+    selectedLargeCategoryId.value = category.largeCategoryId || ''
+    selectedSmallCategoryId.value = category.smallCategoryId || ''
+
     form.name = data.name
     form.shortDescription = data.productShortDescription
-    form.mainImage = data.mainImage // 기존 이미지 경로
+    form.mainImage = data.mainImage
     form.mainImageFile = null
     form.mainImageUrl = ''
     form.price = data.price
@@ -232,18 +240,26 @@ async function fetchProduct() {
   }
 }
 
-// 대/중/소분류 리스트 추출
+function resolveCategoryPath(categoryId) {
+  const result = { largeCategoryId: '', smallCategoryId: '' }
+  if (!categories.value || !Array.isArray(categories.value)) return result
+
+  for (const large of categories.value) {
+    for (const small of large.children || []) {
+      if (String(small.categoryId) === String(categoryId)) {
+        result.largeCategoryId = String(large.categoryId)
+        result.smallCategoryId = String(small.categoryId)
+        return result
+      }
+    }
+  }
+  return result
+}
+
 const largeCategories = computed(() => categories.value)
-const mediumCategories = computed(() => {
-  const large = categories.value.find(c => c.categoryId === selectedLargeCategoryId.value)
-  return large && large.children ? large.children : []
-})
 const smallCategories = computed(() => {
-  const large = categories.value.find(c => c.categoryId === selectedLargeCategoryId.value)
-  const medium = large && large.children
-    ? large.children.find(c => c.categoryId === selectedMediumCategoryId.value)
-    : null
-  return medium && medium.children ? medium.children : []
+  const large = categories.value.find(c => c.categoryId === Number(selectedLargeCategoryId.value))
+  return large && large.children ? large.children : []
 })
 
 function addOption() {
@@ -275,7 +291,7 @@ function onMainImageChange(event) {
 }
 
 function validateForm() {
-  if (!selectedLargeCategoryId.value || !selectedMediumCategoryId.value || !selectedSmallCategoryId.value) {
+  if (!selectedLargeCategoryId.value || !selectedSmallCategoryId.value) {
     formError.value = '카테고리를 모두 선택해 주세요.'
     return false
   }
@@ -283,16 +299,8 @@ function validateForm() {
     formError.value = '상품명을 입력해 주세요.'
     return false
   }
-  if (form.price === null || form.price < 0) {
-    formError.value = '상품 가격은 0 이상으로 입력해 주세요.'
-    return false
-  }
-  if (form.salePrice === null || form.salePrice < 0) {
-    formError.value = '상품 판매가는 0 이상으로 입력해 주세요.'
-    return false
-  }
-  if (form.stock === null || form.stock < 0) {
-    formError.value = '상품 재고는 0 이상으로 입력해 주세요.'
+  if (form.price < 0 || form.salePrice < 0 || form.stock < 0) {
+    formError.value = '가격 및 재고는 0 이상으로 입력해 주세요.'
     return false
   }
   if (!form.status) {
@@ -316,24 +324,11 @@ function validateForm() {
     return false
   }
   for (const [i, opt] of form.options.entries()) {
-    if (!opt.name.trim()) {
-      formError.value = `옵션 ${i + 1}의 옵션명을 입력해 주세요.`
-      return false
-    }
-    if (opt.salePriceDiff === null || isNaN(opt.salePriceDiff)) {
-      formError.value = `옵션 ${i + 1}의 판매가 차액을 입력해 주세요.`
-      return false
-    }
-    if (opt.stock === null || opt.stock < 0) {
-      formError.value = `옵션 ${i + 1}의 재고는 0 이상으로 입력해 주세요.`
-      return false
-    }
-    if (!opt.status) {
-      formError.value = `옵션 ${i + 1}의 상태를 선택해 주세요.`
+    if (!opt.name.trim() || isNaN(opt.salePriceDiff) || opt.stock < 0 || !opt.status) {
+      formError.value = `옵션 ${i + 1} 정보를 모두 입력해 주세요.`
       return false
     }
   }
-  formError.value = ''
   return true
 }
 
@@ -357,39 +352,52 @@ async function submitForm() {
 
   try {
     const formData = new FormData()
-    // 마지막 선택된 카테고리 id(숫자)만 전송
-    let categoryId = selectedSmallCategoryId.value || selectedMediumCategoryId.value || selectedLargeCategoryId.value
-    formData.append('categoryId', categoryId)
-    formData.append('name', form.name)
-    formData.append('price', form.price)
-    formData.append('salePrice', form.salePrice)
-    formData.append('stock', form.stock)
-    formData.append('productStatus', form.status)
-    // 이미지 파일이 새로 선택된 경우만 파일 첨부, 아니면 기존 경로 유지
-    if (form.mainImageFile) {
-      formData.append('mainImage', form.mainImageFile)
-    }
-    formData.append('productShortDescription', form.shortDescription)
-    formData.append('productDescription', form.description)
 
-    if (form.options && form.options.length > 0) {
-      const options = form.options.map(opt => ({
+    // 1. JSON 형태의 product 객체 생성
+    const product = {
+      categoryId: selectedSmallCategoryId.value || selectedLargeCategoryId.value,
+      name: form.name,
+      price: form.price,
+      salePrice: form.salePrice,
+      stock: form.stock,
+      productStatus: form.status,
+      productShortDescription: form.shortDescription,
+      productDescription: form.description,
+      options: form.options?.map(opt => ({
         optionName: opt.name,
         salePrice: Number(form.salePrice) + Number(opt.salePriceDiff),
         stock: opt.stock,
         status: opt.status
-      }))
-      formData.append('options', JSON.stringify(options))
+      })) || []
     }
 
-    await axios.patch(`/api/products/${productId}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+    // 2. product JSON을 Blob으로 묶어서 append
+    formData.append(
+      'product',
+      new Blob([JSON.stringify(product)], { type: 'application/json' })
+    )
+
+    // 3. 대표 이미지 있을 경우 추가
+    if (form.mainImageFile) {
+      formData.append('mainImage', form.mainImageFile)
+    }
+
+    // 4. JWT 토큰
+    const token = sessionStorage.getItem('jwt') || localStorage.getItem('jwt')
+
+    // 5. 요청 전송
+    await axios.post(`/api/products/${productId}/edit`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        'Authorization': `Bearer ${token}`
+      }
     })
 
+    // 6. 성공 처리
     if (!isUnmounted) {
       formSuccess.value = '상품이 성공적으로 수정되었습니다!'
       setTimeout(() => {
-        if (!isUnmounted && router && router.push) {
+        if (!isUnmounted && router?.push) {
           formSuccess.value = ''
           router.push('/product')
         }
@@ -405,6 +413,7 @@ async function submitForm() {
     }
   }
 }
+
 </script>
 
 <style>

@@ -90,10 +90,11 @@ import axios from 'axios';
 const router = useRouter();
 const route = useRoute();
 
-// productId로 통일
-const productId = Number(route.params.productId);;
-const qnaId = route.params.id;
+// URL 파라미터
+const productId = Number(route.params.productId);
+const qnaId = route.params.qnaId;
 
+// 데이터 상태
 const inquiry = ref({
   qnaId: '',
   productId: '',
@@ -113,6 +114,16 @@ const loading = ref(false);
 const maxLength = 300;
 const minLength = 5;
 
+// JWT 토큰 가져오기
+function getAuthHeader() {
+  const token = sessionStorage.getItem('jwt') || localStorage.getItem('jwt');
+  return {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  };
+}
+
 const canSubmit = computed(() =>
   newAnswerText.value.trim().length >= minLength &&
   newAnswerText.value.length <= maxLength
@@ -124,10 +135,14 @@ function formatDate(dateStr) {
   return date.toISOString().slice(0, 10);
 }
 
-// 문의 상세/답변 리스트 조회
+// 문의 상세 + 답변 리스트
 async function fetchInquiryDetail() {
   try {
-    const { data } = await axios.get(`/api/products/${productId}/inquiries/${qnaId}`);
+    const { data } = await axios.get(
+      `/api/products/${productId}/inquiries/${qnaId}`,
+      getAuthHeader()
+    );
+
     inquiry.value = {
       qnaId: data.qnaId ?? data.QNA_ID,
       productId: data.productId ?? data.PRODUCT_ID,
@@ -137,6 +152,7 @@ async function fetchInquiryDetail() {
       content: data.content ?? data.CONTENT,
       createdDate: data.createdDate ?? data.CREATED_DATE,
     };
+
     answers.value = (data.answers ?? []).map(a => ({
       answerId: a.answerId ?? a.ANSWER_ID,
       qnaId: a.qnaId ?? a.QNA_ID,
@@ -154,10 +170,11 @@ async function submitAnswer() {
   if (!canSubmit.value) return;
   loading.value = true;
   try {
-    await axios.post(`/api/products/${productId}/inquiries/${qnaId}/answers`, {
-      content: newAnswerText.value,
-      userId: 'admin', // 실제 로그인 정보로 대체
-    });
+    await axios.post(
+      `/api/products/${productId}/inquiries/${qnaId}/answers`,
+      { content: newAnswerText.value },
+      getAuthHeader()
+    );
     newAnswerText.value = '';
     await fetchInquiryDetail();
   } catch (e) {
@@ -166,19 +183,20 @@ async function submitAnswer() {
   loading.value = false;
 }
 
-// 답변 수정 시작
+// 답변 수정
 function startEdit(answer) {
   editAnswerId.value = answer.answerId;
   editAnswerText.value = answer.content;
 }
-// 답변 수정 저장
+
 async function saveEditAnswer(answerId) {
   if (editAnswerText.value.trim().length < minLength) return;
   try {
-    await axios.put(`/api/products/${productId}/inquiries/${qnaId}/answers/${answerId}`, {
-      content: editAnswerText.value,
-      userId: 'admin', // 실제 로그인 정보로 대체
-    });
+    await axios.put(
+      `/api/products/${productId}/inquiries/${qnaId}/answers/${answerId}`,
+      { content: editAnswerText.value },
+      getAuthHeader()
+    );
     editAnswerId.value = null;
     editAnswerText.value = '';
     await fetchInquiryDetail();
@@ -186,16 +204,21 @@ async function saveEditAnswer(answerId) {
     alert('답변 수정에 실패했습니다.');
   }
 }
+
 // 답변 수정 취소
 function cancelEdit() {
   editAnswerId.value = null;
   editAnswerText.value = '';
 }
+
 // 답변 삭제
 async function deleteAnswer(answerId) {
   if (!confirm('답변을 삭제하시겠습니까?')) return;
   try {
-    await axios.delete(`/api/products/${productId}/inquiries/${qnaId}/answers/${answerId}`);
+    await axios.delete(
+      `/api/products/${productId}/inquiries/${qnaId}/answers/${answerId}`,
+      getAuthHeader()
+    );
     await fetchInquiryDetail();
   } catch (e) {
     alert('답변 삭제에 실패했습니다.');
@@ -208,6 +231,7 @@ function goToInquiryList() {
 
 onMounted(fetchInquiryDetail);
 </script>
+
 
 <style scoped>
 .inquiry-detail {

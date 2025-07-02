@@ -17,6 +17,7 @@ import BroadCastRegister from '../components/seller/broadCast/BroadCastRegister.
 import BroadCastStart from '../components/seller/broadCast/BroadCastStart.vue'
 
 import ChatTest from '../components/chat/ChatTest.vue'
+import BroadCastList from '../components/seller/broadCast/BroadCastList.vue'
 
 const Login = () => import('@/components/login/login.vue')
 const Register = () => import('@/components/host/register.vue')
@@ -34,7 +35,7 @@ const routes = [
   { path: 'reviews', name: 'ProductReviewList', component: ProductReviewList, props: true },
   { path: 'reviews/:reviewId', name: 'ProductReviewDetail', component: ProductReviewDetail, props: true },
   { path: 'inquiries', name: 'ProductInquiryList', component: ProductInquiryList, props: true },
-  { path: 'inquiries/:id', name: 'ProductInquiryDetail', component: ProductInquiryDetail, props: true }
+  { path: 'inquiries/:qnaId', name: 'ProductInquiryDetail', component: ProductInquiryDetail, props: true }
 ]},
 
 
@@ -49,6 +50,7 @@ const routes = [
   { path: '/broadcast/test', name: 'BroadCastTest', component: BroadCastTest, props: true},
   { path: '/broadcast/register', name: 'BroadCastRegister', component: BroadCastRegister, props: true},
   { path: '/broadcast/:broadcast_id', name: 'BroadCastStart', component: BroadCastStart, props: true},
+  { path: '/broadcast/list', name: 'BroadCastList', component: BroadCastList, props: true},
   { path: '/chat-test/:broadcastId/:role?', name: 'ChatTest', component: ChatTest, props: true }
 ]
 

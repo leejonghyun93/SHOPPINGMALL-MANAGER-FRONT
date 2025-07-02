@@ -98,7 +98,7 @@
                 </router-link>
               </td>
               <td>
-                {{ [product.mainCategoryName, product.midCategoryName, product.subCategoryName].filter(Boolean).join(' > ') }}
+                {{ [product.mainCategoryName, product.subCategoryName].filter(Boolean).join(' > ') }}
               </td>
               <td>{{ currency(product.price) }}</td>
               <td>{{ currency(product.salePrice) }}</td>
@@ -166,26 +166,29 @@ const currentPage = ref(1)
 const pageSize = 10
 
 const statusCounts = ref({
-  ALL: 0,
-  ACTIVE: 0,
-  INACTIVE: 0,
-  SOLD_OUT: 0
-})
+  '전체': 0,
+  '판매중': 0,
+  '판매중지': 0,
+  '품절': 0
+});
+
+const statusTab = ref('전체');
 
 const statusTabs = [
-  { label: '전체', value: 'ALL' },
-  { label: '판매중', value: 'ACTIVE' },
-  { label: '판매중지', value: 'INACTIVE' },
-  { label: '품절', value: 'SOLD_OUT' }
-]
+  { label: '전체', value: '전체' },
+  { label: '판매중', value: '판매중' },
+  { label: '판매중지', value: '판매중지' },
+  { label: '품절', value: '품절' }
+];
 
 const statusMap = {
-  ACTIVE: '판매중',
-  INACTIVE: '판매중지',
-  SOLD_OUT: '품절'
-}
+  '판매중': '판매중',
+  '판매중지': '판매중지',
+  '품절': '품절'
+};
 
-const statusTab = ref('ALL')
+
+
 const selectedCategory = ref('')
 const searchKeyword = ref('')
 const sortKey = ref('createdDate')
@@ -210,8 +213,8 @@ async function fetchProducts() {
     const params = {
       page: currentPage.value,
       size: pageSize,
-      sort: sortKey.value === 'stock' ? 'stock,asc' : `${sortKey.value},desc`,
-      status: statusTab.value === 'ALL' ? undefined : statusTab.value,
+      sort: sortKey.value,
+      status: statusTab.value === '전체' ? undefined : statusTab.value,
       categoryId: selectedCategory.value || undefined,
       keyword: searchKeyword.value
     }
@@ -219,13 +222,28 @@ async function fetchProducts() {
       if (params[key] === '' || params[key] === undefined) delete params[key]
     })
 
-    const res = await axios.get('/api/products', { params })
+    const token = sessionStorage.getItem('jwt') || localStorage.getItem('jwt')
+
+    console.log('[Request Params]', params)
+    console.log('[Authorization]', token)
+
+    const res = await axios.get('/api/products', {
+      params,
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    console.log('[Response]', res.data)
+
     products.value = res.data.content
     totalElements.value = res.data.totalElements
     statusCounts.value = res.data.statusCounts || {
-      ALL: 0, ACTIVE: 0, INACTIVE: 0, SOLD_OUT: 0
+      전체: 0,
+      판매중: 0,
+      판매중지: 0,
+      품절: 0
     }
-  } catch {
+  } catch (err) {
+    console.error('[Error during fetchProducts]', err)
     error.value = '상품 목록을 불러오는 데 실패했습니다.'
   } finally {
     loading.value = false
