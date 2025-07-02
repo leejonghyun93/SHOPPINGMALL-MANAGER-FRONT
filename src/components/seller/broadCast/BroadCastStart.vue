@@ -18,29 +18,83 @@
         <div class="control-buttons">
           <button @click="startBroadcast">방송 시작</button>
           <button @click="stopBroadcast">방송 중지</button>
-          <button @click="pauseBroadcast">방송 일시정지</button>
         </div>
       </div>
 
       <!-- 오른쪽: 시청자, 상품, 채팅, 송출/종료/나가기 버튼 -->
       <div class="right-section">
-        <div class="viewer-info">
-          <div>시청자 수: {{ viewerCount }}</div>
+        <!-- <div class="viewer-info">
+          <div>시청자 수: {{ broadcast.total_viewers}}</div>
           <ul>
-            <li v-for="viewer in viewers" :key="viewer.id">{{ viewer.name }}</li>
-          </ul>
+            <li v-for="viewer in broadcast.viewerList" 
+            :key="broadcast.viewerList.viewer_id">
+            {{ viewer.username }}</li>
+          </ul> -->
+
+          <!-- <table class="viewer-table">
+            <thead>
+              <tr>
+                <th>아이디</th>
+                <th>이름</th>
+                <th>입장 시간</th>
+                <th>시청 시간</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="viewer in broadcast.viewerList" :key="viewer.user_id">
+                <td>{{ viewer.user_id }}</td>
+                <td>{{ viewer.username }}</td>
+                <td>{{ viewer.joined_at }}</td>
+                <td>{{ viewer.watch_duration }}초</td>
+              </tr>
+            </tbody>
+          </table> 
+        </div> -->
+
+        <div class="viewer-info">
+          <div class="viewer-count-badge">
+            <svg xmlns="http://www.w3.org/2000/svg" class="viewer-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7zm0 12a5 5 0 110-10 5 5 0 010 10z"/>
+              <circle cx="12" cy="12" r="2.5" fill="#fff"/>
+            </svg>
+            <span class="viewer-count">{{ broadcast.total_viewers }}명 시청 중</span>
+          </div>
         </div>
 
-        <div class="product-list">
+        <!-- <div class="product-list">
           <h3>상품 목록</h3>
           <ul>
-            <li v-for="(product, index) in products" :key="index">
-              {{ product.name }} - {{ product.price }}원
+            <li v-for="(product, index) in broadcast.productList" :key="index">
+              {{ product.product.name }} - {{ product.product.price }}원
             </li>
           </ul>
+        </div> -->
+
+        <div class="product-list">
+          <div class="product-header" @click="toggleProductList">
+            <h3>상품 목록</h3>
+            <button class="toggle-button">{{ showProducts ? '접기 ▲' : '펼치기 ▼' }}</button>
+          </div>
+
+          <table v-if="showProducts" class="product-table">
+            <thead>
+              <tr>
+                <th>번호</th>
+                <th>상품명</th>
+                <th>가격</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(product, index) in broadcast.productList" :key="index">
+                <td>{{ index + 1 }}</td>
+                <td>{{ product.product.name }}</td>
+                <td>{{ product.product.price.toLocaleString() }}원</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
-        <div class="chat-box">
+        <!-- <div class="chat-box">
           <h3>실시간 채팅</h3>
           <div class="chat-messages">
             <div v-for="(chat, index) in chatMessages" :key="index" class="chat-message">
@@ -54,6 +108,34 @@
             @keyup.enter="sendMessage"
           />
           <button @click="sendMessage">전송</button>
+        </div> -->
+
+        <div class="chat-box">
+          <div class="chat-header" @click="toggleChatBox">
+            <h3>실시간 채팅</h3>
+            <button class="toggle-button">{{ showChat ? '접기 ▲' : '펼치기 ▼' }}</button>
+          </div>
+
+          <!-- ✅ 전체 chat-content를 통째로 접었다 폈다 -->
+          <div v-if="showChat" class="chat-body">
+            <div class="chat-messages">
+              <div
+                v-for="(chat, index) in chatMessages"
+                :key="index"
+                class="chat-message"
+              >
+                <strong>{{ chat.user }}:</strong> {{ chat.message }}
+              </div>
+            </div>
+
+            <input
+              type="text"
+              v-model="chatInput"
+              placeholder="채팅을 입력하세요..."
+              @keyup.enter="sendMessage"
+            />
+            <button @click="sendMessage">전송</button>
+          </div>
         </div>
 
         <!-- 오른쪽 버튼 -->
@@ -78,17 +160,6 @@ import Hls from 'hls.js'
 
 const obs = new OBSWebSocket()
 const viewerCount = ref(30)
-const viewers = ref([
-  { id: 1, name: '시청자1' },
-  { id: 2, name: '시청자2' },
-])
-
-const products = reactive({
-  productId: '',
-  name: '',
-  price: '',
-  mainImage: '',
-})
 
 const broadcast = reactive({
   broadcast_id: '',
@@ -100,8 +171,12 @@ const broadcast = reactive({
   like_count: '',
   scheduled_start_time: '',
 	scheduled_end_time: '',
+  productList: [],
+  viewerList: [],
 })
 
+const showProducts = ref(true)
+const showChat = ref(true)
 
 const chatInput = ref('')
 const chatMessages = ref([])
@@ -112,6 +187,14 @@ const route = useRoute()
 const token = ref(localStorage.getItem('jwt') || sessionStorage.getItem('jwt'))
 
 const videoRef = ref(null)
+
+const toggleProductList = () => {
+  showProducts.value = !showProducts.value
+}
+
+const toggleChatBox = () => {
+  showChat.value = !showChat.value
+}
 
 const sendMessage = () => {
   if (!chatInput.value.trim()) return
@@ -131,7 +214,6 @@ const getBroadCasts = async () => {
     console.log("✅ response.data:", response.data)
     
     Object.assign(broadcast, response.data)
-    // Object.assign(products, response.data)
     console.log(broadcast)
     console.log(broadcast.stream_url)
 
@@ -200,15 +282,6 @@ const startBroadcast = async () => {
   }
 };
 
-const pauseBroadcast = async () => {
-  try {
-    await obs.call('TogglePauseStreaming')
-    console.log('방송 일시정지/재개')
-  } catch (error) {
-    console.error('일시정지 실패:', error)
-  }
-}
-
 // const stopBroadcast = async () => {
 //   try {
 //     await obs.call('StopStreaming')
@@ -270,14 +343,18 @@ onMounted(() => {
 
 <style scoped>
 .broadcast-page {
-  padding: 20px;
+  padding: 24px;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+  background-color: #f5f6fa;
+  min-height: 100vh;
 }
 
 .main-content {
   display: flex;
-  gap: 20px;
+  gap: 24px;
 }
 
+/* 좌측: 방송 영상, 정보, 제어 버튼 */
 .left-section {
   flex: 3;
   display: flex;
@@ -285,32 +362,235 @@ onMounted(() => {
   gap: 20px;
 }
 
+.video-section video {
+  width: 100%;
+  height: 550px;
+  background: #000;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.info-section {
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.info-section h2 {
+  margin-bottom: 10px;
+  font-size: 20px;
+  color: #2c3e50;
+}
+
+.info-section p {
+  margin-bottom: 6px;
+  color: #555;
+  font-size: 14px;
+}
+
+.control-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.control-buttons button {
+  flex: 1;
+  padding: 12px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.control-buttons button:hover {
+  background-color: #2980b9;
+}
+
+/* 우측: 시청자, 상품, 채팅, 제어 */
 .right-section {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  justify-content: space-between;
+  justify-content: flex-start;
 }
 
-.video-section video {
-  width: 100%;
-  height: 550px;
-  background: black;
-  border-radius: 8px;
-}
-
-.info-section {
-  background: #f2f2f2;
-  padding: 20px;
+.viewer-info {
+  padding: 16px;
+  background-color: #ffffff;
   border-radius: 12px;
-}
-
-.control-buttons {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   display: flex;
-  gap: 10px;
+  align-items: center;
+  justify-content: center;
 }
 
+.viewer-count-badge {
+  display: flex;
+  align-items: center;
+  background-color: #ecf0f1;
+  padding: 8px 14px;
+  border-radius: 30px;
+  font-weight: bold;
+  font-size: 14px;
+  color: #2c3e50;
+  box-shadow: inset 0 0 4px rgba(0,0,0,0.05);
+}
+
+.viewer-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+  color: #2980b9;
+}
+
+/*.viewer-info,*/
+/* .product-list, */
+/* .chat-box {
+  background-color: #ffffff;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  font-size: 14px;
+  color: #333;
+} */
+
+.product-list {
+  background-color: #ffffff;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.product-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.toggle-button {
+  background: none;
+  border: none;
+  color: #3498db;
+  font-size: 14px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.product-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.product-table th,
+.product-table td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: left;
+}
+
+.product-table th {
+  background-color: #f0f3f5;
+  color: #2c3e50;
+}
+
+/* 상품 리스트 */
+/* .product-list ul {
+  padding-left: 16px;
+}
+
+.product-list li {
+  margin-bottom: 6px;
+} */
+
+/* 채팅 */
+/* .chat-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 300px;
+} */
+
+.chat-box {
+  background: #ffffff;
+  padding: 10px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-body {
+  display: flex;
+  flex-direction: column;
+  height: 300px; /* 고정 높이 */
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  background: white;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.chat-message {
+  margin-bottom: 6px;
+}
+
+.chat-box input {
+  margin-top: 6px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  outline: none;
+}
+
+.chat-box button {
+  margin-top: 6px;
+  padding: 10px;
+  background-color: #2ecc71;
+  color: white;
+  font-weight: bold;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.chat-box button:hover {
+  background-color: #27ae60;
+}
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.toggle-button {
+  background: none;
+  border: none;
+  color: #3498db;
+  font-size: 14px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.chat-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* 방송 제어 버튼 */
 .right-buttons {
   display: flex;
   flex-direction: column;
@@ -322,32 +602,43 @@ onMounted(() => {
   gap: 10px;
 }
 
-.viewer-info,
-.product-list,
-.chat-box {
-  background: #f8f8f8;
-  padding: 10px;
-  border-radius: 10px;
-}
-
-.chat-box {
+.right-buttons button {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  height: 300px;
+  padding: 12px;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s;
 }
 
-.chat-messages {
-  flex: 1;
-  overflow-y: auto;
-  background: white;
-  padding: 5px;
-  border: 1px solid #ccc;
-  margin-bottom: 5px;
-  border-radius: 5px;
+/* 송출/종료 버튼 */
+.right-buttons .horizontal-buttons button:first-child {
+  background-color: #f39c12;
+  color: white;
 }
 
-.chat-message {
-  margin-bottom: 4px;
+.right-buttons .horizontal-buttons button:first-child:hover {
+  background-color: #d68910;
 }
+
+.right-buttons .horizontal-buttons button:last-child {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.right-buttons .horizontal-buttons button:last-child:hover {
+  background-color: #c0392b;
+}
+
+/* 나가기 버튼 */
+.exit-btn {
+  background-color: #95a5a6;
+  color: white;
+}
+
+.exit-btn:hover {
+  background-color: #7f8c8d;
+}
+
 </style>
