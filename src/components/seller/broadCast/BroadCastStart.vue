@@ -19,37 +19,35 @@
           <button @click="startBroadcast">방송 시작</button>
           <button @click="stopBroadcast">방송 중지</button>
         </div>
+
+        <div class="form-group">
+          <label>OBS 서버 주소 설정 (파일>설정>방송 : 서버 주소에 해당 주소를 붙여넣어 주세요)</label>
+          <input type="text" :value="rtmp_url" readonly placeholder="자동 생성 예정" />
+        </div>
+
+        <div class="form-group">
+          <label>OBS 스트림 키 (파일>설정>방송 : 스트림 키에 해당 주소를 붙여넣어 주세요)</label>
+          <div style="display: flex; align-items: center;">
+            <input
+              ref="streamKeyInput"
+              :type="'text'"
+              :value="stream_key"
+              readonly
+              :style="showStreamKey ? '' : 'webkitTextSecurity: disc;'"
+              style="flex: 1;"
+            />
+            <button type="button" @click="toggleStreamKey" style="margin-left: 8px;">
+              {{ showStreamKey ? '🙈' : '👁️' }}
+            </button>
+            <button type="button" @click="copyStreamKey" style="margin-left: 8px;">
+              📋
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- 오른쪽: 시청자, 상품, 채팅, 송출/종료/나가기 버튼 -->
       <div class="right-section">
-        <!-- <div class="viewer-info">
-          <div>시청자 수: {{ broadcast.total_viewers}}</div>
-          <ul>
-            <li v-for="viewer in broadcast.viewerList" 
-            :key="broadcast.viewerList.viewer_id">
-            {{ viewer.username }}</li>
-          </ul> -->
-
-          <!-- <table class="viewer-table">
-            <thead>
-              <tr>
-                <th>아이디</th>
-                <th>이름</th>
-                <th>입장 시간</th>
-                <th>시청 시간</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="viewer in broadcast.viewerList" :key="viewer.user_id">
-                <td>{{ viewer.user_id }}</td>
-                <td>{{ viewer.username }}</td>
-                <td>{{ viewer.joined_at }}</td>
-                <td>{{ viewer.watch_duration }}초</td>
-              </tr>
-            </tbody>
-          </table> 
-        </div> -->
 
         <div class="viewer-info">
           <div class="viewer-count-badge">
@@ -57,18 +55,9 @@
               <path d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7zm0 12a5 5 0 110-10 5 5 0 010 10z"/>
               <circle cx="12" cy="12" r="2.5" fill="#fff"/>
             </svg>
-            <span class="viewer-count">{{ broadcast.total_viewers }}명 시청 중</span>
+            <span class="viewer-count">{{ broadcast.current_viewers }}명 시청 중</span>
           </div>
         </div>
-
-        <!-- <div class="product-list">
-          <h3>상품 목록</h3>
-          <ul>
-            <li v-for="(product, index) in broadcast.productList" :key="index">
-              {{ product.product.name }} - {{ product.product.price }}원
-            </li>
-          </ul>
-        </div> -->
 
         <div class="product-list">
           <div class="product-header" @click="toggleProductList">
@@ -94,48 +83,15 @@
           </table>
         </div>
 
-        <!-- <div class="chat-box">
-          <h3>실시간 채팅</h3>
-          <div class="chat-messages">
-            <div v-for="(chat, index) in chatMessages" :key="index" class="chat-message">
-              <strong>{{ chat.user }}:</strong> {{ chat.message }}
-            </div>
-          </div>
-          <input
-            type="text"
-            v-model="chatInput"
-            placeholder="채팅을 입력하세요..."
-            @keyup.enter="sendMessage"
-          />
-          <button @click="sendMessage">전송</button>
-        </div> -->
-
         <div class="chat-box">
           <div class="chat-header" @click="toggleChatBox">
             <h3>실시간 채팅</h3>
             <button class="toggle-button">{{ showChat ? '접기 ▲' : '펼치기 ▼' }}</button>
           </div>
 
-          <!-- ✅ 전체 chat-content를 통째로 접었다 폈다 -->
-          <div v-if="showChat" class="chat-body">
-            <div class="chat-messages">
-              <div
-                v-for="(chat, index) in chatMessages"
-                :key="index"
-                class="chat-message"
-              >
-                <strong>{{ chat.user }}:</strong> {{ chat.message }}
-              </div>
-            </div>
-
-            <input
-              type="text"
-              v-model="chatInput"
-              placeholder="채팅을 입력하세요..."
-              @keyup.enter="sendMessage"
-            />
-            <button @click="sendMessage">전송</button>
-          </div>
+        <!-- ✅ 전체 chat-content를 통째로 접었다 폈다 -->
+        <div :class="['chat-box', { collapsed: isCollapsed }]" v-if="broadcast.broadcast_id">
+          <SellerChat :broadcastId="broadcast.broadcast_id" />
         </div>
 
         <!-- 오른쪽 버튼 -->
@@ -149,6 +105,7 @@
       </div>
     </div>
   </div>
+</div>
 </template>
 
 <script setup>
@@ -157,17 +114,16 @@ import OBSWebSocket from 'obs-websocket-js'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import Hls from 'hls.js'
+import SellerChat from '@/components/chat/SellerChat.vue';
 
-const obs = new OBSWebSocket()
-const viewerCount = ref(30)
+// const obs = new OBSWebSocket()
 
 const broadcast = reactive({
   broadcast_id: '',
   broadcaster_id: '',
   title: '',
   description: '',
-  stream_url: '',
-  total_viewers: '',
+  current_viewers: '',
   like_count: '',
   scheduled_start_time: '',
 	scheduled_end_time: '',
@@ -175,11 +131,14 @@ const broadcast = reactive({
   viewerList: [],
 })
 
-const showProducts = ref(true)
-const showChat = ref(true)
+const stream_key = ref('')
+const rtmp_url = ref('')
+const stream_url = ref('')
 
-const chatInput = ref('')
-const chatMessages = ref([])
+const showProducts = ref(true)
+const showStreamKey = ref(false)
+const streamKeyInput = ref(null)
+
 
 const router = useRouter()
 const route = useRoute()
@@ -192,17 +151,6 @@ const toggleProductList = () => {
   showProducts.value = !showProducts.value
 }
 
-const toggleChatBox = () => {
-  showChat.value = !showChat.value
-}
-
-const sendMessage = () => {
-  if (!chatInput.value.trim()) return
-  chatMessages.value.push({ user: '나', message: chatInput.value.trim() })
-  chatInput.value = ''
-}
-
-
 const getBroadCasts = async () => {
   if (!broadcast.broadcast_id) {
     console.warn("⛔ broadcast_id가 없습니다:", broadcast.broadcast_id)
@@ -213,9 +161,15 @@ const getBroadCasts = async () => {
     
     console.log("✅ response.data:", response.data)
     
-    Object.assign(broadcast, response.data)
-    console.log(broadcast)
-    console.log(broadcast.stream_url)
+    Object.assign(broadcast, response.data.broadcast)
+    stream_key.value = response.data.stream_key
+    rtmp_url.value = response.data.rtmp_url
+    stream_url.value = response.data.stream_url
+
+    console.log("broadcast: ", broadcast)
+    console.log("stream_url: ", stream_url)
+    console.log("stream_key: ", stream_key)
+    console.log("rtmp_url: ", rtmp_url)
 
     playStream()
   } catch(error){
@@ -223,17 +177,9 @@ const getBroadCasts = async () => {
   }
 }
 
-// const connectOBS = async () => {
-//   try {
-//     await obs.connect('ws://localhost:4455')
-//   } catch (error) {
-//     console.error('OBS 연결 실패:', error)
-//   }
-// }
-
 const playStream = () => {
-  const hlsUrl = broadcast.stream_url
-  console.log(broadcast.stream_url)
+  const hlsUrl = stream_url.value
+  console.log(stream_url.value)
   if (Hls.isSupported()) {
     const hls = new Hls({
       liveSyncDuration: 1,
@@ -282,15 +228,6 @@ const startBroadcast = async () => {
   }
 };
 
-// const stopBroadcast = async () => {
-//   try {
-//     await obs.call('StopStreaming')
-//     console.log('방송 중지됨')
-//   } catch (error) {
-//     console.error('중지 실패:', error)
-//   }
-// }
-
 const stopBroadcast = async () => {
 
   try {
@@ -322,17 +259,65 @@ const stopBroadcast = async () => {
   }
 };
 
+const updateBroadcastStatus = async (payload) => {
+  try {
+    await axios.put('/api/broadcast/status', payload)
+    alert('방송 상태 업데이트 완료!')
+  } catch (err) {
+    alert('업데이트 실패: ' + err.message)
+  }
+}
+
 const sendToBroadcast = () => {
-  alert('방송 송출 기능 연결 예정')
+  const now = new Date().toISOString()
+  updateBroadcastStatus({
+    broadcast_id: broadcast.broadcast_id,
+    broadcast_status: 'LIVE',
+    actual_start_time: formatDateToMySQL(now)
+  })
+  alert('방송 송출 시작!')
 }
 
 const exitBroadcast = () => {
-  alert('방송 종료 처리 예정')
+  const now = new Date().toISOString()
+  updateBroadcastStatus({
+    broadcast_id: broadcast.broadcast_id,
+    broadcast_status: 'ENDED',
+    actual_end_time: formatDateToMySQL(now)
+  })
+  alert('방송 송출 종료!')
 }
 
 const exitPage = () => {
   router.push('/')
 }
+
+function formatDateToMySQL(date) {
+  const d = new Date(date)
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  const hh = String(d.getHours()).padStart(2, '0')
+  const min = String(d.getMinutes()).padStart(2, '0')
+  const ss = String(d.getSeconds()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`
+}
+
+// 스트림 키 보여주기
+const toggleStreamKey = () => {
+  showStreamKey.value = !showStreamKey.value
+}
+
+// 스트림 키 복사
+const copyStreamKey = async () => {
+  try {
+    await navigator.clipboard.writeText(broadcast.stream_key)
+    alert('스트림 키 복사 완료!')
+  } catch (err) {
+    alert('복사 실패')
+  }
+}
+
 
 onMounted(() => {
   broadcast.broadcast_id = parseInt(route.params.broadcast_id)
@@ -500,79 +485,16 @@ onMounted(() => {
   color: #2c3e50;
 }
 
-/* 상품 리스트 */
-/* .product-list ul {
-  padding-left: 16px;
-}
-
-.product-list li {
-  margin-bottom: 6px;
-} */
-
-/* 채팅 */
-/* .chat-box {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  height: 300px;
-} */
-
 .chat-box {
-  background: #ffffff;
-  padding: 10px;
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
+  transition: height 0.3s ease;
+  overflow: hidden;
 }
 
-.chat-body {
-  display: flex;
-  flex-direction: column;
-  height: 300px; /* 고정 높이 */
-}
-
-.chat-messages {
-  flex: 1;
-  overflow-y: auto;
-  background: white;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-}
-
-.chat-message {
-  margin-bottom: 6px;
-}
-
-.chat-box input {
-  margin-top: 6px;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  outline: none;
-}
-
-.chat-box button {
-  margin-top: 6px;
-  padding: 10px;
-  background-color: #2ecc71;
-  color: white;
-  font-weight: bold;
+/* 접힌 상태에서 부모에서 class 내려주기 (예: collapsed 상태 class) */
+.chat-box.collapsed {
+  height: 0;
+  padding: 0;
   border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.chat-box button:hover {
-  background-color: #27ae60;
-}
-
-.chat-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
 }
 
 .toggle-button {
@@ -641,4 +563,23 @@ onMounted(() => {
   background-color: #7f8c8d;
 }
 
+/* 공통 폼 그룹 */
+.form-group {
+  margin-bottom: 24px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #374151;
+  font-size: 15px;
+}
+
+/* 수평 정렬 그룹 */
+.form-group.horizontal {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
 </style>

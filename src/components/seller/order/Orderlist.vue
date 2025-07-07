@@ -346,7 +346,7 @@ const searchOrders = async () => {
       console.log("orders length:", orders.value.length)
 
       console.log("orders.value:", orders.value)
-console.log("첫 번째 주문의 아이템 개수:", orders.value[0]?.orderItems?.length)
+      console.log("첫 번째 주문의 아이템 개수:", orders.value[0]?.orderItems?.length)
     } catch (error) {
     console.error('검색 실패:', error)
     alert('검색 중 오류 발생')
