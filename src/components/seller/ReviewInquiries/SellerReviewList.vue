@@ -1,10 +1,25 @@
 <template>
   <div class="review-management">
-    <h2>[{{ productName }}] 상품 후기 목록</h2>
+    <h2>상품 후기 목록</h2>
+
+    <!-- 검색창 -->
+    <div class="review-search-bar">
+      <input
+        type="text"
+        v-model="searchKeyword"
+        placeholder="상품명 또는 내용 검색"
+        class="search-input"
+        @keyup.enter="fetchReviews"
+      />
+      <button class="btn-main" @click="fetchReviews">검색</button>
+    </div>
+
+    <!-- 후기 테이블 -->
     <table class="review-table">
       <thead>
         <tr>
           <th>번호</th>
+          <th>상품명</th>
           <th>작성자</th>
           <th>후기내용</th>
           <th>평점</th>
@@ -15,20 +30,23 @@
         </tr>
       </thead>
       <tbody>
-        <tr
-          v-for="(review, index) in pagedReviews"
-          :key="review.reviewId"
-          :class="{ 'row-inactive': review.displayYn !== 'Y' }"
-        >
-          <td>{{ totalElements - ((currentPage - 1) * pageSize) - index }}</td>
+          <tr
+            v-for="(review, index) in pagedReviews"
+            :key="review.reviewId"
+            :class="{ 'row-inactive': review.displayYn !== 'Y' }"
+          >
+          <td>
+           {{ (totalReviews - ((currentPage - 1) * pageSize) - index) }} <!-- 내림차순 번호 -->
+          </td>
+          <td>{{ review.productName }}</td>
           <td>{{ review.userId }}</td>
           <td>
-            <router-link
-              :to="{ name: 'ProductReviewDetail', params: { reviewId: review.reviewId } }"
-              class="review-link"
+            <RouterLink
+                :to="{ name: 'ProductReviewDetail', params: { productId: review.productId, reviewId: review.reviewId } }"
+                class="review-link"
             >
-              {{ shortContent(review.content) }}
-            </router-link>
+                {{ shortContent(review.content) }}
+            </RouterLink>
           </td>
           <td>
             <span class="star-rating">
@@ -55,11 +73,12 @@
           </td>
         </tr>
         <tr v-if="pagedReviews.length === 0">
-          <td colspan="8" style="text-align:center;">후기 데이터가 없습니다.</td>
+          <td colspan="9" style="text-align:center;">후기 데이터가 없습니다.</td>
         </tr>
       </tbody>
     </table>
 
+    <!-- 페이지네이션 -->
     <div class="review-table-bottom-bar">
       <div class="review-pagination-wrapper">
         <div class="pagination">
@@ -75,101 +94,80 @@
           <button class="btn-main" @click="nextPage" :disabled="currentPage === totalPages">다음</button>
         </div>
       </div>
-      <div class="review-bottom-btns">
-        <button class="btn-main" @click="goToList">목록으로</button>
-      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import axios from 'axios';
+import { ref, computed, onMounted } from 'vue'
+import axios from 'axios'
 
-const router = useRouter();
-const route = useRoute();
-const productId = Number(route.params.productId);
+const reviews = ref([])
+const currentPage = ref(1)
+const pageSize = 10
+const searchKeyword = ref('')
+const totalReviews = computed(() => reviews.value.length)
 
-const totalElements = computed(() => reviews.value.length)
-
-const reviews = ref([]);
-const productName = ref('');
-const currentPage = ref(1);
-const pageSize = 10;
-
-const totalPages = computed(() => Math.ceil(reviews.value.length / pageSize));
+const totalPages = computed(() => Math.ceil(reviews.value.length / pageSize))
 
 const pagedReviews = computed(() => {
-  const sorted = [...reviews.value].sort((a, b) =>
-    new Date(b.createdDate) - new Date(a.createdDate)
-  );
-  const start = (currentPage.value - 1) * pageSize;
-  return sorted.slice(start, start + pageSize);
-});
+  const start = (currentPage.value - 1) * pageSize
+  return reviews.value.slice(start, start + pageSize)
+})
 
 function formatDate(dateStr) {
-  if (!dateStr) return '';
-  return new Date(dateStr).toISOString().slice(0, 10);
+  if (!dateStr) return ''
+  return new Date(dateStr).toISOString().slice(0, 10)
 }
 function shortContent(content) {
-  return content.length > 30 ? content.slice(0, 30) + '...' : content;
+  return content.length > 30 ? content.slice(0, 30) + '...' : content
 }
 
-// 후기 공개여부 토글
+// 공개 여부 토글
 async function toggleVisibility(review) {
-  const token = sessionStorage.getItem('jwt') || localStorage.getItem('jwt');
-  const newYn = review.displayYn === 'Y' ? 'N' : 'Y';
+  const token = sessionStorage.getItem('jwt') || localStorage.getItem('jwt')
+  const newYn = review.displayYn === 'Y' ? 'N' : 'Y'
 
   try {
     await axios.put(
-      `/api/products/${productId}/reviews/${review.reviewId}/display-yn`,
+      `/api/products/${review.productId}/reviews/${review.reviewId}/display-yn`,
       { displayYn: newYn },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    review.displayYn = newYn;
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    review.displayYn = newYn
   } catch {
-    alert('공개여부 변경에 실패했습니다.');
+    alert('공개여부 변경에 실패했습니다.')
   }
 }
 
-function goToList() {
-  router.push({ name: 'ProductList' });
+// 후기 목록 가져오기
+async function fetchReviews() {
+  const token = sessionStorage.getItem('jwt') || localStorage.getItem('jwt')
+  try {
+    const res = await axios.get('/api/seller/reviews', {
+      params: { keyword: searchKeyword.value },
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    reviews.value = res.data ?? []
+    currentPage.value = 1
+  } catch {
+    alert('후기 목록을 불러오는 데 실패했습니다.')
+    reviews.value = []
+  }
 }
+
+// 페이지 조작
 function goToPage(page) {
-  currentPage.value = page;
+  currentPage.value = page
 }
 function prevPage() {
-  if (currentPage.value > 1) currentPage.value--;
+  if (currentPage.value > 1) currentPage.value--
 }
 function nextPage() {
-  if (currentPage.value < totalPages.value) currentPage.value++;
+  if (currentPage.value < totalPages.value) currentPage.value++
 }
 
-async function fetchReviews() {
-  const token = sessionStorage.getItem('jwt') || localStorage.getItem('jwt');
-  try {
-    const res = await axios.get(`/api/products/${productId}/reviews`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    reviews.value = res.data ?? [];
-    if (reviews.value.length > 0 && reviews.value[0].productName) {
-      productName.value = reviews.value[0].productName;
-    }
-  } catch {
-    alert('후기 목록을 불러오는 데 실패했습니다.');
-    reviews.value = [];
-    productName.value = '';
-  }
-}
-
-onMounted(fetchReviews);
+onMounted(fetchReviews)
 </script>
 
 <style scoped>
@@ -187,6 +185,20 @@ h2 {
   font-weight: 700;
   color: #222;
 }
+.review-search-bar {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.search-input {
+  width: 320px;
+  height: 40px;
+  font-size: 1rem;
+  padding: 0 14px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
 .review-table {
   width: 100%;
   border-collapse: collapse;
@@ -203,9 +215,6 @@ h2 {
   background: #f7faff;
   font-weight: 600;
 }
-.review-table td {
-  background: #fff;
-}
 .row-inactive {
   opacity: 0.45;
 }
@@ -214,7 +223,6 @@ h2 {
   display: inline-block;
   width: 36px;
   height: 20px;
-  vertical-align: middle;
 }
 .switch input {
   opacity: 0;
@@ -248,7 +256,6 @@ input:checked + .slider:before {
 }
 .star-rating {
   display: inline-block;
-  vertical-align: middle;
 }
 .star {
   color: #e0e0e0;
@@ -258,7 +265,6 @@ input:checked + .slider:before {
   color: #ffd600;
 }
 .photo-badge {
-  display: inline-block;
   background: #e9f5ff;
   color: #2563eb;
   font-size: 0.98em;
@@ -278,32 +284,12 @@ input:checked + .slider:before {
 .review-table-bottom-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  margin: 36px 0 0 0;
-}
-.review-pagination-wrapper {
-  flex: 1 1 0;
-  display: flex;
   justify-content: center;
-  align-items: center;
-  min-width: 0;
-  width: 100%;
+  margin-top: 32px;
 }
 .pagination {
   display: flex;
   gap: 0.5rem;
-  align-items: center;
-  justify-content: center;
-  overflow-x: auto;
-  white-space: nowrap;
-  width: 100%;
-  scrollbar-width: thin;
-}
-.review-bottom-btns {
-  display: flex;
-  gap: 16px;
-  justify-content: flex-end;
 }
 .btn-main {
   background: #2563eb;
@@ -314,32 +300,20 @@ input:checked + .slider:before {
   font-weight: 700;
   padding: 0.54rem 1.6rem;
   cursor: pointer;
-  transition: background 0.2s;
-  height: 48px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 2px;
+  height: 40px; /* 버튼 높이 통일 */
 }
-.btn-main.active,
-.pagination .btn-main.active {
+.btn-main.active {
   background: #1746a2;
-  color: #fff;
 }
 .btn-main:disabled {
   background: #e5e7eb;
   color: #b3b9c9;
   cursor: not-allowed;
 }
-.btn-main:hover {
-  background: #1746a2;
-}
 .review-link {
   color: #2563eb;
   text-decoration: underline;
   cursor: pointer;
-  font-weight: 500;
-  transition: color 0.15s;
 }
 .review-link:hover {
   color: #1746a2;

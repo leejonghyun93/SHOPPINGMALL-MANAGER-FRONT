@@ -27,6 +27,9 @@
               <li>
                 <router-link to="/product/register" class="submenu-link">상품 등록</router-link>
               </li>
+              <li>
+                <router-link to="/reviews-inquiries" class="submenu-link">후기/문의</router-link>
+              </li>
             </ul>
           </li>
         
