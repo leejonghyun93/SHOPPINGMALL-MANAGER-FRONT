@@ -55,8 +55,8 @@
           <thead>
             <tr>
               <th><input type="checkbox" @change="toggleAll" :checked="allSelected" /></th>
+              <th>번호</th>
               <th>썸네일</th>
-              <th>상품번호</th>
               <th>상품명</th>
               <th>카테고리</th>
               <th>정상가</th>
@@ -81,17 +81,17 @@
               <td colspan="14">상품이 없습니다.</td>
             </tr>
             <tr
-              v-for="product in pagedProducts"
+              v-for="(product, index) in pagedProducts"
               :key="product.productId"
               :class="{ 'row-inactive': product.displayYn === 'N' }"
             >
               <td>
                 <input type="checkbox" v-model="selectedProducts" :value="product.productId" />
               </td>
+              <td>{{ totalElements - ((currentPage - 1) * pageSize) - index }}</td>
               <td class="td-thumb">
                 <img :src="getImageUrl(product.mainImage)" alt="썸네일" class="thumb-lg" />
               </td>
-              <td>{{ product.productId }}</td>
               <td>
                 <router-link :to="{ name: 'ProductDetail', params: { productId: product.productId } }">
                   {{ product.name }}

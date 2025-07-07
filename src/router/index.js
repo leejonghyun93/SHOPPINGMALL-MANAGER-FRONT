@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import SellerMain from '../components/seller/SellerMain.vue'
+import SellerDashboard from '../components/seller/SellerDashboard.vue'
 import ProductList from '../components/seller/product/ProductList.vue'
 import ProductRegister from '../components/seller/product/ProductRegister.vue'
 import ProductDetail from '../components/seller/product/ProductDetail.vue'
@@ -11,6 +11,8 @@ import ProductDetailMain from '../components/seller/product/ProductDetailMain.vu
 import Orderlist from '../components/seller/order/Orderlist.vue'
 import OrderDetail from '../components/seller/order/OrderDetail.vue'
 import ProductEdit from '../components/seller/product/ProductEdit.vue'
+import ReviewInquiries from '../components/seller/ReviewInquiries/ReviewInquiries.vue'
+
 
 import BroadCastTest from '../components/seller/broadCast/test.vue'
 import BroadCastRegister from '../components/seller/broadCast/BroadCastRegister.vue'
@@ -18,6 +20,7 @@ import BroadCastStart from '../components/seller/broadCast/BroadCastStart.vue'
 
 import ChatTest from '../components/chat/ChatTest.vue'
 import BroadCastList from '../components/seller/broadCast/BroadCastList.vue'
+import BroadCastDetail from '../components/seller/broadCast/BroadCastDetail.vue'
 
 const Login = () => import('@/components/login/login.vue')
 const Register = () => import('@/components/host/register.vue')
@@ -26,7 +29,7 @@ const FindPassword = () => import('@/components/login/FindPasswordStep1.vue')
 const ChangePassword = () => import('@/components/login/ChangePassword.vue')
 
 const routes = [
-  { path: '/', name: 'Dashboard', component: SellerMain, meta: { requiresAuth: true }},
+  { path: '/', name: 'Dashboard', component: SellerDashboard, meta: { requiresAuth: true }},
   { path: '/product', name: 'ProductList', component: ProductList },
   { path: '/product/register', name: 'ProductRegister', component: ProductRegister },
   { path: '/product/:productId/edit', name: 'ProductEdit', component: ProductEdit, props: true },
@@ -37,6 +40,9 @@ const routes = [
   { path: 'inquiries', name: 'ProductInquiryList', component: ProductInquiryList, props: true },
   { path: 'inquiries/:qnaId', name: 'ProductInquiryDetail', component: ProductInquiryDetail, props: true }
 ]},
+
+  { path: '/reviews-inquiries', name: 'ReviewInquiriesManage', component: ReviewInquiries, props: true},
+  
 
 
   { path: '/login', name: 'Login', component: Login },
@@ -51,7 +57,8 @@ const routes = [
   { path: '/broadcast/register', name: 'BroadCastRegister', component: BroadCastRegister, props: true},
   { path: '/broadcast/:broadcast_id', name: 'BroadCastStart', component: BroadCastStart, props: true},
   { path: '/broadcast/list', name: 'BroadCastList', component: BroadCastList, props: true},
-  { path: '/chat-test/:broadcastId/:role?', name: 'ChatTest', component: ChatTest, props: true }
+  { path: '/chat-test/:broadcastId/:role?', name: 'ChatTest', component: ChatTest, props: true },
+  { path: '/broadcast/detail/:broadcast_id', name: 'BroadCastDetail', component: BroadCastDetail, props: true},
 ]
 
 const router = createRouter({

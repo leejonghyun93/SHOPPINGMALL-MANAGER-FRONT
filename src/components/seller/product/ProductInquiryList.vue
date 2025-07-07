@@ -4,8 +4,9 @@
     <table class="inquiry-table">
       <thead>
         <tr>
-          <th>문의번호</th>
+          <th>번호</th>
           <th>작성자</th>
+          <th>문의제목</th>
           <th>문의내용</th>
           <th>등록일자</th>
           <th>공개여부</th>
@@ -15,11 +16,12 @@
       </thead>
       <tbody>
         <tr
-          v-for="inquiry in pagedInquiries"
+          v-for="(inquiry, index) in pagedInquiries"
           :key="inquiry.id"
         >
-          <td>{{ inquiry.id }}</td>
+          <td>{{ totalElements - ((currentPage - 1) * pageSize) - index }}</td>
           <td>{{ inquiry.author }}</td>
+          <td>{{ inquiry.title }}</td>
           <td>
             <!-- router-link 부분 -->
 <router-link
@@ -69,6 +71,7 @@ import axios from 'axios';
 
 const router = useRouter();
 const route = useRoute();
+const totalElements = computed(() => inquiries.value.length);
 
 const productId = Number(route.params.productId); // 라우트 파라미터명에 맞게 수정
 const inquiries = ref([]);
@@ -118,6 +121,7 @@ async function fetchInquiries() {
     inquiries.value = res.data?.map(item => ({
   id: item.qnaId ?? item.QNA_ID,
   author: item.userId ?? item.USER_ID,
+  title: item.title ?? item.TITLE,
   content: item.content ?? item.CONTENT,
   date: item.createdDate ?? item.CREATED_DATE,
   isPublic: (item.isSecret ?? item.IS_SECRET) === 'N',
