@@ -30,34 +30,38 @@
 
         <div class="form-group horizontal">
           <div class="radio-group2">
-            <label>방송 시작 시간<input type="datetime-local" v-model="broadcast.schedule_start_time" /></label>
-            <label>방송 종료 시간<input type="datetime-local" v-model="broadcast.schedule_end_time" /></label>
+            <label>방송 시작 시간<input type="datetime-local" v-model="broadcast.scheduled_start_time" /></label>
+            <label>방송 종료 시간<input type="datetime-local" v-model="broadcast.scheduled_end_time" /></label>
           </div>
         </div>
 
         <div class="form-group">
-          <label>OBS 서버 주소 설정 (파일>설정>방송 : 서버 주소에 해당 주소를 붙여넣어 주세요)</label>
-          <input type="text" :value="rtmp_url" readonly placeholder="자동 생성 예정" />
+          <label>OBS 설치된 PC의 IP</label>
+          <input type="text" v-model="broadcast.obs_host" placeholder="OBS를 사용할 PC의 IP를 입력해주세요" />
         </div>
 
         <div class="form-group">
-          <label>OBS 스트림 키 (파일>설정>방송 : 스트림 키에 해당 주소를 붙여넣어 주세요)</label>
-          <div style="display: flex; align-items: center;">
+          <label>OBS Websocket 포트 번호</label>
+          <input type="text" v-model="broadcast.obs_port" placeholder="OBS WebSocket을 연결할 포트번호를 입력해주세요" />
+        </div>
+
+        <div class="form-group">
+          <label>OBS WebSocket 비밀번호</label>
+          <div class="password-wrapper">
             <input
-              ref="streamKeyInput"
-              :type="'text'"
-              :value="broadcast.stream_key"
-              readonly
-              :style="showStreamKey ? '' : 'webkitTextSecurity: disc;'"
-              style="flex: 1;"
+              :type="showPassword ? 'text' : 'password'"
+              v-model="broadcast.obs_password"
+              placeholder="비밀번호를 입력해주세요"
             />
-            <button type="button" @click="toggleStreamKey" style="margin-left: 8px;">
-              {{ showStreamKey ? '🙈' : '👁️' }}
-            </button>
-            <button type="button" @click="copyStreamKey" style="margin-left: 8px;">
-              📋
+            <button type="button" @click="togglePassword">
+              {{ showPassword ? '🙈' : '👁️' }}
             </button>
           </div>
+        </div>
+
+        <div class="form-group">
+          <label>서버 IP 주소</label>
+          <input type="text" v-model="broadcast.nginx_host" placeholder="docker 설치된 서버 주소 (192.168.4.206)" />
         </div>
       </div>
 
@@ -159,17 +163,18 @@ const broadcast = reactive({
   title: '',
   description: '',
   category_id: '',
-  stream_url: '',
   thumbnail_url: '',
   is_public: '',
   broadcast_status: '',
-  schedule_start_time: '',
-  schedule_end_time: '',
-  stream_key: '',
+  scheduled_start_time: '',
+  scheduled_end_time: '',
+  obs_host: '',
+  obs_port: '',
+  obs_password: '',
+  nginx_host: '',
   productList: [],
 })
 
-const rtmp_url = ref('');
 
 const thumbnailPreview = ref('') // 미리보기용 로컬 URL
 
@@ -177,8 +182,7 @@ const searchKeyword = ref('')
 const searchResults = ref([])
 const token = localStorage.getItem('jwt') || sessionStorage.getItem('jwt')
 
-const showStreamKey = ref(false)
-const streamKeyInput = ref(null)
+const showPassword = ref(false)
 
 
 // broadcaster_id 에 로그인된 id 불러오기
@@ -214,9 +218,6 @@ const submitForm = async () => {
     console.log(token)
 
     Object.assign(broadcast, responseData.broadcast);  // broadcast 전체 덮어쓰기 대신 병합
-    broadcast.stream_key = responseData.stream_key
-    rtmp_url.value = responseData.rtmp_url
-    broadcast.stream_url = responseData.stream_url
 
     if(responseData.status === "error"){
       alert(responseData.error)
@@ -225,6 +226,9 @@ const submitForm = async () => {
       // router.push(`/broadcast/{broadcast.broadcast_id}`)
      
       const broadcastUrl = `/broadcast/${broadcast.broadcast_id}`
+
+      console.log("broadcast_id : ", broadcast.broadcast_id)
+      console.log("broadcast: ", broadcast) 
       window.open(broadcastUrl, '_blank', 'width=1500,height=900,resizable=yes')
     }
 
@@ -304,26 +308,10 @@ const handleFileUpload = async (e) => {
   }
 }
 
-// 방송 스트림 url, key 가져오기
-const initBroadcastInfo = async () => {
-  try {
-    const res = await axios.get('/api/broadcast/init', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
-    const data = res.data
-    broadcast.stream_key = data.stream_key
-    broadcast.stream_url = data.stream_url
-    rtmp_url.value = data.rtmp_url  // 필요 시
-  } catch (error) {
-    console.error('초기 방송 키/URL 생성 실패:', error)
-  }
-}
 
 // 스트림 키 보여주기
-const toggleStreamKey = () => {
-  showStreamKey.value = !showStreamKey.value
+const togglePassword = () => {
+  showPassword.value = !showPassword.value
 }
 
 // 스트림 키 복사
@@ -337,7 +325,6 @@ const copyStreamKey = async () => {
 }
 
 onMounted(() => {
-  initBroadcastInfo()
   searchProducts()
 })
 </script>
@@ -537,5 +524,14 @@ button:hover {
 .btn-wrap button {
   font-size: 16px;
   padding: 12px 30px;
+}
+
+.password-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.password-wrapper input {
+  flex: 1;
 }
 </style>
