@@ -23,15 +23,15 @@ const goToProductPage = () => {
         <div class="card-body">
             <div class="item">
                 <span>판매중</span>
-                <span>{{ onSale }}</span>       
+                <span>{{ onSale }}건</span>       
             </div>
             <div class="item">
                 <span>판매중지</span>
-                <span>{{ offSale }}</span>
+                <span>{{ offSale }}건</span>
             </div>
             <div class="item">
                 <span>품절</span>
-                <span>{{ outOfStock }}</span>
+                <span>{{ outOfStock }}건</span>
             </div>
         </div>
     </div>

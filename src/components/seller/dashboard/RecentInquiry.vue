@@ -136,7 +136,7 @@ h3 {
 
 .count {
   margin-left: 0.4rem;
-  font-size: 1rem;
+  font-size: 1.5rem;
   color: #3b82f6;
 }
 

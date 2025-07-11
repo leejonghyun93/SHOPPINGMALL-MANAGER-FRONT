@@ -1,26 +1,26 @@
 <template>
   <div class="chat-container">
-    <!-- 공지 영역 -->
-    <div class="notice-banner" :class="{ expanded: isNoticeExpanded }">
-      <div class="notice-text" :class="{ expanded: isNoticeExpanded }">
-        📢 {{ displayNotice }}
-      </div>
-      <button
-        v-if="shouldShowMoreBtn"
-        class="notice-toggle-btn"
-        @click="toggleNotice"
-      >
-        {{ isNoticeExpanded ? '접기' : '더보기' }}
+    <!-- 상단 툴바 -->
+    <div class="chat-topbar">
+      <span class="chat-participant-count">👥 {{ participantCount }}명 참여중</span>
+      <button class="notice-toggle-btn" @click="toggleNotice">
+        📢 {{ isNoticeExpanded ? '공지 숨기기' : '라이브 공지사항 보기' }}
       </button>
     </div>
 
-    <!-- 메시지 + 입력창 묶음 -->
+    <!-- 공지사항 -->
+    <div v-if="isNoticeExpanded" class="notice-banner">
+      <div class="notice-text">{{ displayNotice }}</div>
+    </div>
+
+    <!-- 채팅 메인 영역 -->
     <div class="chat-main">
+      <!-- 메시지 리스트 -->
       <div class="chat-messages" ref="messagesContainer" @scroll="handleScroll">
         <div
           v-for="(msg, index) in messages"
           :key="index"
-          :class="['chat-message', msg.systemOnly ? 'system-message' : (isMyMessage(msg) ? 'my-message' : 'other-message')]"
+          :class="['chat-message', msg.systemOnly ? 'system-message' : isMyMessage(msg) ? 'my-message' : 'other-message']"
         >
           <template v-if="msg.systemOnly">
             <div class="system-box">{{ msg.text }}</div>
@@ -28,9 +28,16 @@
           <template v-else>
             <div class="chat-line">
               <template v-if="!isMyMessage(msg)">
-                <div class="nickname">{{ msg.from }}</div>
+                <div class="nickname">
+                  <template v-if="msg.from === '관리자'">
+                    <span class="admin-nickname">👑 {{ msg.from }}</span>
+                  </template>
+                  <template v-else>
+                    {{ msg.from }}
+                  </template>
+                </div>
               </template>
-              <div class="bubble">
+              <div class="bubble" :class="{ 'admin-bubble': msg.from === '관리자' }">
                 <img v-if="msg.type === 'sticker'" :src="stickerMap[msg.text]" class="chat-sticker" />
                 <span v-else class="chat-content">{{ msg.text }}</span>
               </div>
@@ -51,13 +58,22 @@
           v-model="newMessage"
           @focus="handleInputFocus"
           @keyup.enter="sendMessage"
-          :placeholder="isLoggedIn.value ? '메시지를 입력하세요' : '로그인 후 사용가능'"
+          :disabled="!isChatEnabled || !isLoggedIn"
+          :placeholder="
+            !isChatEnabled
+              ? '채팅이 비활성화되었습니다.'
+              : isLoggedIn.value
+              ? '메시지를 입력하세요'
+              : '로그인 후 사용가능'
+          "
         />
-        <button @click="sendMessage">전송</button>
+        <button @click="sendMessage" :disabled="!isChatEnabled || !isLoggedIn" class="send-button">
+          전송
+        </button>
         <button @click="toggleTools" class="tools-toggle">😎</button>
       </div>
 
-      <!-- 도구창 -->
+      <!-- 스티커 도구창 -->
       <div v-if="showTools" class="chat-tools">
         <div class="tools-header">
           <div class="tab-buttons">
@@ -78,7 +94,7 @@
       </div>
     </div>
 
-    <!-- 로그인 안내 -->
+    <!-- 로그인 모달 -->
     <div v-if="showLoginModal" class="login-popup-overlay">
       <div class="login-popup">
         <p>로그인 후 채팅이 가능합니다.</p>
@@ -92,19 +108,26 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, computed, defineExpose } from 'vue';
+import { ref, nextTick, onMounted, computed, defineExpose, onUnmounted } from 'vue';
 import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
 import { stickerMap } from './EmojiMap';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { userState } from './UserState';
+import { getOrCreateUUID } from '@/components/common/uuid.js';
 
 const props = defineProps({
   class: String,
-  broadcastId: Number,
-  role: { type: String, default: 'user' } // future use
+  broadcastId: String,
+  role: { type: String, default: 'user' }
 });
+
+const emit = defineEmits(['host-detected']);
+
+const isMyMessage = (msg) => {
+  return msg.userId && msg.userId === userState.userId;
+};
 
 const router = useRouter();
 const isLoggedIn = ref(false);
@@ -118,10 +141,16 @@ const showScrollToBottom = ref(false);
 const loading = ref(true);
 const activeTab = ref('bear');
 
-const normalize = str => String(str || '').trim();
-const isMyMessage = msg => normalize(msg.from) === normalize(userState.currentUser);
+const broadcastStatus = ref('');
+const isChatEnabled = ref(false);
+const isHost = ref(false);
+const noticeMessage = ref('');
+const isNoticeExpanded = ref(false);
+const uuid = getOrCreateUUID();
+const participantCount = ref(0);
+const hasInitialParticipantSet = ref(false);
 
-const noticeMessage = ref('') // 공지사항 메시지
+let chatSubscription = null;
 
 const filteredStickers = computed(() => {
   return Object.fromEntries(
@@ -131,67 +160,119 @@ const filteredStickers = computed(() => {
 
 const socket = new SockJS('http://192.168.4.132:8080/ws-chat');
 const stompClient = new Client({
-  webSocketFactory: () => socket,
+  webSocketFactory: () => new SockJS('http://192.168.4.132:8080/ws-chat'),
   reconnectDelay: 5000,
   onConnect: () => {
-    messages.value.push({ text: '채팅방에 입장하셨습니다.', systemOnly: true });
-    
-    stompClient.subscribe('/topic/public', msg => {
+    // 📌 채팅 메시지 구독
+    chatSubscription = stompClient.subscribe('/topic/public', msg => {
       const received = JSON.parse(msg.body);
-
       if (received.type === 'notice') {
         noticeMessage.value = received.text.trim() || '';
         return;
       }
-
       messages.value.push(received);
-
       nextTick(() => {
         isScrolledToBottom() ? scrollToBottom() : (showScrollToBottom.value = true);
       });
+    });
+
+    // 📌 방송 상태 변경 구독
+    stompClient.subscribe(`/topic/broadcast/${props.broadcastId}/status`, msg => {
+      const payload = JSON.parse(msg.body);
+      broadcastStatus.value = payload.status;
+      isChatEnabled.value = ['live', 'start', 'stop'].includes(broadcastStatus.value.toLowerCase());
+    });
+    // 📌 참여자 수 구독
+    stompClient.subscribe(`/topic/participants/${props.broadcastId}`, msg => {
+      const count = parseInt(msg.body, 10);
+      console.log('👥 참가자 수 수신:', count);
+
+      console.log('🧪 connectHeaders.broadcastId:', props.broadcastId);
+
+      console.log('🧪 uuid:', uuid);
+
+    if (!hasInitialParticipantSet.value) {
+      console.log('🧪 초기 API 수신 전이라 STOMP 반영 안 함');
+       return;
+     }
+
+      participantCount.value = isNaN(count) ? 0 : count;
     });
   }
 });
 
 onMounted(async () => {
+  const token = localStorage.getItem('jwt') || sessionStorage.getItem('jwt');
+
+  stompClient.connectHeaders = {
+    Authorization: token ? `Bearer ${token}` : '',
+    uuid,
+    broadcastId: props.broadcastId
+  };
   stompClient.activate();
 
-  try {
-    const res = await axios.get(`/api/chat/history/${props.broadcastId}`);
-    const history = res.data || [];
-
-    // ✅ 1. 일반 메시지만 messages 배열에 추가
-    messages.value.push(...history.filter(msg => msg.type !== 'notice'));
-
-    // ✅ 2. 마지막 공지 메시지 추출해서 noticeMessage에 반영
-    const lastNotice = [...history].reverse().find(msg => msg.type === 'notice');
-    if (lastNotice && lastNotice.text.trim()) {
-      noticeMessage.value = lastNotice.text.trim();
-    }
-
-  } catch (err) {
-    console.error('❌ 채팅 기록 조회 실패:', err);
-  }
-
-  // ✅ 로그인 유저 정보 확인
-  const token = localStorage.getItem('jwt') || sessionStorage.getItem('jwt');
   if (token) {
     try {
-      const res = await axios.get('/api/members/me', {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await axios.get(`/api/members/me/${props.broadcastId}`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      userState.currentUser = res.data.nickname;
-      userState.userId = res.data.userId;
       isLoggedIn.value = true;
+      isHost.value = res.data.host === true;
+      userState.userId = res.data.userId;
+      userState.currentUser = isHost.value ? '관리자' : res.data.nickname;
+      emit('host-detected', isHost.value);
     } catch (err) {
-      console.warn('❌ 사용자 정보 조회 실패 (토큰 만료 등):', err);
+      console.warn('❌ 사용자 정보 조회 실패:', err);
       localStorage.removeItem('jwt');
       sessionStorage.removeItem('jwt');
     }
   }
 
+  try {
+    const res = await axios.get(`/api/broadcasts/${props.broadcastId}/status`);
+    broadcastStatus.value = res.data.status;
+    isChatEnabled.value = ['live', 'start', 'stop'].includes(broadcastStatus.value.toLowerCase());
+  } catch (err) {
+    console.error('❌ 방송 상태 조회 실패:', err);
+  }
+
+  try {
+    const res = await axios.get(`/api/chat/history/${props.broadcastId}`);
+    const history = res.data || [];
+
+    messages.value.push(...history.filter(msg => msg.type !== 'notice'));
+
+    const lastNotice = [...history].reverse().find(msg => msg.type === 'notice');
+    if (lastNotice && lastNotice.text.trim()) {
+      noticeMessage.value = lastNotice.text.trim();
+    }
+
+    messages.value.push({ text: '채팅방에 입장하셨습니다.', systemOnly: true });
+
+  } catch (err) {
+    console.error('❌ 채팅 기록 조회 실패:', err);
+  }
+
+  try {
+    const res = await axios.get(`/api/chat/participants/${props.broadcastId}`);
+    console.log('🟢 참가자 수 초기 조회 응답:', res.data);
+    participantCount.value = res.data.count;
+    hasInitialParticipantSet.value = true;
+  } catch (e) {
+    console.warn('❌ 참가자 수 초기 조회 실패', e);
+  }
+
   loading.value = false;
   scrollToBottom();
+});
+
+const filteredStickers = computed(() => {
+  return Object.entries(stickerMap)
+    .filter(([key]) => key.startsWith(activeTab.value))
+    .reduce((acc, [key, src]) => {
+      acc[key] = src;
+      return acc;
+    }, {});
 });
 
 const sendMessage = () => {
@@ -230,12 +311,9 @@ const sendNotice = (text) => {
     type: 'notice',
     text: text || '',
     broadcastId: props.broadcastId,
-    userId: userState.userId,
+    userId: userState.userId
   };
-  stompClient.publish({
-    destination: '/app/sendMessage',
-    body: JSON.stringify(payload),
-  });
+  stompClient.publish({ destination: '/app/sendMessage', body: JSON.stringify(payload) });
 };
 
 const focusInput = () => nextTick(() => inputRef.value?.focus());
@@ -252,10 +330,15 @@ const isScrolledToBottom = (threshold = 200) => {
   const el = messagesContainer.value;
   return !el || el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
 };
-const handleScroll = () => { showScrollToBottom.value = !isScrolledToBottom(200); };
-const toggleTools = () => { showTools.value = !showTools.value; focusInput(); 
-  if (showTools.value) {
-    scrollToBottom();}  
+const handleScroll = () => {
+  showScrollToBottom.value = !isScrolledToBottom(200);
+};
+
+
+const toggleTools = () => {
+  showTools.value = !showTools.value;
+  focusInput();
+  if (showTools.value) scrollToBottom();
 };
 const goToLogin = () => router.push('/login');
 const handleInputFocus = e => {
@@ -265,24 +348,20 @@ const handleInputFocus = e => {
   }
 };
 
-const isNoticeExpanded = ref(false) // 공지사항 확장 상태
-
-const shouldShowMoreBtn = computed(() => {
-  return noticeMessage.value.length > 10;
-});
-
-const displayNotice = computed(() => {
-  return noticeMessage.value.trim() !== '' ? noticeMessage.value : '등록된 공지사항이 없습니다.';
-});
-
+const shouldShowMoreBtn = computed(() => noticeMessage.value.length > 10);
+const displayNotice = computed(() => noticeMessage.value.trim() || '등록된 공지사항이 없습니다.');
 const toggleNotice = () => {
   isNoticeExpanded.value = !isNoticeExpanded.value;
 };
 
-defineExpose({
-  sendNotice     
-});
+defineExpose({ sendNotice });
 
+onUnmounted(() => {
+  if (chatSubscription) chatSubscription.unsubscribe();
+  if (stompClient.connected) stompClient.deactivate();
+  const disconnectId = isLoggedIn.value ? userState.userId : uuid;
+  navigator.sendBeacon(`/api/chat/disconnect/${props.broadcastId}?id=${disconnectId}`);
+});
 </script>
 
 <style scoped>
@@ -293,6 +372,7 @@ defineExpose({
   overflow: hidden;
 }
 
+/* 🔔 공지 영역 */
 .notice-banner {
   flex-shrink: 0;
   background: #fef9c3;
@@ -304,17 +384,11 @@ defineExpose({
 .notice-text {
   font-size: 12px;
   line-height: 1.4;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  line-clamp: 1;               /* (표준 속성, 의미 없음) */
--webkit-line-clamp: 1; 
-  white-space: normal; /* 줄바꿈 가능하도록 */
+  white-space: pre-wrap;
+  overflow: auto;
 }
 .notice-text.expanded {
-  line-clamp: 1;               /* (표준 속성, 의미 없음) */
--webkit-line-clamp: unset; /* 줄 수 제한 해제 */
+  -webkit-line-clamp: unset;
 }
 .notice-toggle-btn {
   align-self: flex-end;
@@ -326,13 +400,13 @@ defineExpose({
   margin-top: 4px;
 }
 
+/* 📦 채팅 본문 */
 .chat-main {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
-
 .chat-messages {
   flex: 1;
   overflow-y: auto;
@@ -342,10 +416,11 @@ defineExpose({
   min-height: 0;
 }
 
+/* 💬 메시지 */
 .chat-message {
-  margin-bottom: 6px;
   display: flex;
   flex-direction: column;
+  margin-bottom: 6px;
 }
 .my-message {
   align-items: flex-end;
@@ -370,17 +445,35 @@ defineExpose({
   color: #888;
   margin-bottom: 2px;
 }
+.chat-line {
+  display: inline-block;
+  max-width: 60%;
+}
 .bubble {
   background-color: #eeeeee;
   border-radius: 12px;
   padding: 6px 10px;
-  max-width: 80%;
+  max-width: 100%;
   word-break: break-word;
   line-height: 1.4;
 }
 .my-message .bubble {
   background-color: #d8ecff;
 }
+.admin-bubble {
+  background-color: #fde68a;
+  border: 1px solid #f59e0b;
+}
+.admin-nickname {
+  color: #d97706;
+  font-weight: bold;
+  background-color: #fff7ed;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+/* 🧸 스티커 */
 .chat-sticker {
   width: 42px;
   height: 42px;
@@ -389,6 +482,7 @@ defineExpose({
   margin-top: 4px;
 }
 
+/* ⬇️ 최근 메시지로 이동 */
 .scroll-to-bottom {
   background: #3b82f6;
   color: white;
@@ -402,6 +496,7 @@ defineExpose({
   opacity: 0.8;
 }
 
+/* ✏️ 입력창 */
 .chat-input {
   display: flex;
   padding: 6px;
@@ -424,9 +519,14 @@ defineExpose({
   border: none;
   border-radius: 4px;
 }
-.chat-input button:first-of-type {
+.send-button {
   background-color: #3b82f6;
   color: white;
+}
+.send-button:disabled {
+  background-color: #ccc;
+  color: #888;
+  cursor: not-allowed;
 }
 .tools-toggle {
   background: #f3f4f6;
@@ -434,6 +534,7 @@ defineExpose({
   color: #333;
 }
 
+/* 🔧 도구창 */
 .chat-tools {
   flex-shrink: 0;
   background: #f8fafc;
@@ -462,7 +563,6 @@ defineExpose({
   font-size: 14px;
   cursor: pointer;
 }
-
 .sticker-list {
   display: flex;
   flex-wrap: wrap;
@@ -478,10 +578,11 @@ defineExpose({
   cursor: pointer;
 }
 
+/* 🔐 로그인 모달 */
 .login-popup-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(0,0,0,0.4);
+  background-color: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -491,7 +592,7 @@ defineExpose({
   background: white;
   padding: 20px;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   text-align: center;
 }
 .popup-buttons {
@@ -507,5 +608,27 @@ defineExpose({
 .popup-buttons button:last-child {
   background-color: #eee;
   color: #333;
+}
+.chat-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fef9c3;
+  border-bottom: 1px solid #facc15;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.notice-toggle-btn {
+  font-size: 13px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #d97706;
+}
+
+.chat-participant-count {
+  font-size: 12px;
+  color: #666;
 }
 </style>
