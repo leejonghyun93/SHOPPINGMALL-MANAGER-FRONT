@@ -2,7 +2,9 @@
   <header class="seller-header">
     <h2>Seller Header</h2>
     <div class="header-right">
-      <span class="welcome-text">{{ userName }}님</span>
+        <span class="welcome-text">
+          <router-link :to="`/admin/user-detail/${userId}`" class="nickname-link">{{ userName }}</router-link>님
+        </span>
       <span class="token-expire">남은 시간: {{ formattedTime }}</span>
       <button class="btn" @click="extendToken">시간 연장</button>
       <button class="btn" @click="logout">로그아웃</button>
@@ -17,10 +19,11 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 // 예시: 외부에서 받은 사용자 정보
-const userName = ref('동주')
+const userName = ref('')
+const userId = ref('')
 
 const accessToken = ref(
-  localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
+  localStorage.getItem('jwt') || sessionStorage.getItem('jwt')
 )
 
 // JWT 유효시간 관리
@@ -110,11 +113,11 @@ const logout = async () => {
       },
       withCredentials: true // ✅ 서버가 쿠키에 저장한 refreshToken 제거하려면 필요
     })
-
+    alert('로그아웃 되었습니다')
     // 로컬/세션스토리지의 액세스 토큰 제거
-    localStorage.removeItem('accessToken')
-    sessionStorage.removeItem('accessToken') // ✅ 기억하기 옵션 대비
-    localStorage.removeItem('refreshToken')  // (혹시라도 저장했다면 제거)
+    localStorage.removeItem('jwt')
+    sessionStorage.removeItem('jwt') // ✅ 기억하기 옵션 대비
+    // localStorage.removeItem('refreshToken')  // (혹시라도 저장했다면 제거)
 
     // 로그인 페이지로 이동
     router.push('/login')
@@ -124,10 +127,24 @@ const logout = async () => {
   }
 }
 
+const getLoginInfo = async () => {
+  try {
+    const token = localStorage.getItem('jwt') || sessionStorage.getItem('jwt')
+    const res = await axios.get('/api/login/me', {
+      headers: { Authorization: `Bearer ${token}`}
+    }) // 토큰 자동 포함됨 (인터셉터 또는 axios 설정이 되어 있다면)
+    userId.value = res.data.user_id
+    userName.value = res.data.nickname
+  } catch (e) {
+    console.warn('❌ 로그인 정보 가져오기 실패', e)
+  }
+}
+
 // 타이머 설정
 onMounted(() => {
-  updateRemainingTime()
-  intervalId = setInterval(updateRemainingTime, 1000)
+  getLoginInfo()
+  // updateRemainingTime()
+  // intervalId = setInterval(updateRemainingTime, 1000)
 })
 
 onBeforeUnmount(() => {
@@ -137,7 +154,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .seller-header {
-  background-color: #3a3f51;
+  background-color: #2f3247;
   color: white;
   height: 80px;
   display: flex;
@@ -173,5 +190,14 @@ onBeforeUnmount(() => {
 
 .btn:hover {
   background-color: #e0e0e0;
+}
+
+.nickname-link {
+  color: inherit;
+  text-decoration: none;
+}
+.nickname-link:hover {
+  text-decoration: underline;
+  color: #007bff;
 }
 </style>

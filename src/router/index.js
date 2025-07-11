@@ -22,6 +22,14 @@ import ChatTest from '../components/chat/ChatTest.vue'
 import BroadCastList from '../components/seller/broadCast/BroadCastList.vue'
 import BroadCastDetail from '../components/seller/broadCast/BroadCastDetail.vue'
 
+import UserList from '../components/admin/UserList.vue'
+import UserDetail from '../components/admin/UserDetailView.vue'
+import LockedUserList from '../components/admin/LockedUserList.vue'
+import HostList from '../components/admin/HostList.vue'
+import WidthdrawnUserList from '../components/admin/WidthdrawnUserList.vue'
+
+import SellerSales from '../components/seller/Sales/SellerSales.vue'
+
 const Login = () => import('@/components/login/login.vue')
 const Register = () => import('@/components/host/register.vue')
 const FindId = () => import('@/components/login/FindId.vue')
@@ -59,6 +67,13 @@ const routes = [
   { path: '/broadcast/list', name: 'BroadCastList', component: BroadCastList, props: true},
   { path: '/chat-test/:broadcastId/:role?', name: 'ChatTest', component: ChatTest, props: true },
   { path: '/broadcast/detail/:broadcast_id', name: 'BroadCastDetail', component: BroadCastDetail, props: true},
+
+  { path: '/sellerSales', name: 'sellerSales', component: SellerSales, props: true},
+  { path: '/admin/user-list', name: 'UserList', component: UserList, props: true},
+  { path: '/admin/user-list/locked', name: 'LockedUserList', component: LockedUserList, props: true},
+  { path: '/admin/user-list/widthdrawn', name: 'WidthdrawnUserList', component: WidthdrawnUserList, props: true},
+  { path: '/admin/user-list/host', name: 'HostList', component: HostList, props: true},
+  { path: '/admin/user-detail/:user_id', name: 'UserDetail', component: UserDetail, props: true},
 ]
 
 const router = createRouter({
@@ -81,6 +96,10 @@ router.beforeEach((to, from, next) => {
   } else if (to.path === '/login' && isLoggedIn) {
     next('/')
   } else {
+    console.log('🚦 이동 감지:')
+  console.log('➡️ 경로:', to.path)
+  console.log('➡️ 쿼리:', to.query)
+  console.log('➡️ name:', to.name)
     next()
   }
 })

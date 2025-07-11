@@ -65,6 +65,7 @@ function shortText(text: string): string {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 1rem;
 }
 
 .more-btn {

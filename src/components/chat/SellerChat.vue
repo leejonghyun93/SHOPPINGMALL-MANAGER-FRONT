@@ -4,7 +4,7 @@
     <div class="chat-header">
       <div class="chat-title">💬 실시간 채팅</div>
       <div class="chat-header-buttons">
-        <div class="pin-wrapper">
+        <div class="pin-wrapper" v-if="isHost">
           <button class="pin-btn" @click="showModal = true">📌 공지사항 등록</button>
         </div>
         <div class="toggle-wrapper">
@@ -20,8 +20,9 @@
       <div v-show="!isCollapsed" class="chat-area-wrapper">
         <ChatCommon
           ref="chatRef"
-          :broadcastId="props.broadcastId"
+          :broadcastId="String(props.broadcastId)"
           class="chat-area"
+          @host-detected="isHost = $event"
         />
       </div>
     </transition>
@@ -45,8 +46,10 @@ import { ref } from 'vue'
 import ChatCommon from './ChatCommon.vue'
 
 const props = defineProps({
-  broadcastId: Number
+  broadcastId: String
 })
+
+const isHost = ref(false)
 
 const chatRef = ref(null)
 const noticeText = ref('')
