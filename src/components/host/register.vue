@@ -29,6 +29,11 @@
         </div>
 
         <div class="form-item">
+          <label>닉네임</label>
+          <input v-model="form.nickname" type="text" required />
+        </div>
+
+        <div class="form-item">
           <label>이메일</label>
           <input v-model="form.email" type="email" required />
         </div>
@@ -46,6 +51,11 @@
         <div class="form-item">
           <label>주소</label>
           <input v-model="form.address" type="text" />
+        </div>
+
+        <div class="form-item">
+          <label>상세주소</label>
+          <input v-model="form.myaddress" type="text" />
         </div>
 
         <div class="form-item">
@@ -125,10 +135,12 @@ const form = reactive({
   user_id: '',
   password: '',
   name: '',
+  nickname: '',
   email: '',
   phone: '',
   zipcode: '',
   address: '',
+  myaddress: '',
   birth_date: '',
   gender: '',
   profile_img: '',

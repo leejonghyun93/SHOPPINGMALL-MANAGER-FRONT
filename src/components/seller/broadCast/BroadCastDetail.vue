@@ -8,6 +8,13 @@
           <source src="http://localhost:8090/live/abc123_720p/index.m3u8" type="application/x-mpegURL" />
           브라우저가 video 태그를 지원하지 않습니다.
         </video>
+        <!-- <video
+          v-if="broadcast.video_url"
+          :src="broadcast.video_url"
+          controls
+        />
+        <p v-else>다시보기 영상이 아직 없습니다.</p> -->
+
       </div>
 
       <!-- 우측: 상품 + 통계 -->

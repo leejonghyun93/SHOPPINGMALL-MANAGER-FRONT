@@ -129,7 +129,7 @@ const filteredStickers = computed(() => {
   );
 });
 
-const socket = new SockJS('http://localhost:8080/ws-chat');
+const socket = new SockJS('http://192.168.4.132:8080/ws-chat');
 const stompClient = new Client({
   webSocketFactory: () => socket,
   reconnectDelay: 5000,
