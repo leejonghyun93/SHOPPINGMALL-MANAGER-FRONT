@@ -118,7 +118,7 @@
           </table>
         </div>
 
-        <div class="form-group">
+        <!-- <div class="form-group">
           <label>카테고리</label>
           <select v-model="broadcast.category_id">
             <option disabled value="">선택</option>
@@ -132,7 +132,7 @@
             <option value="8">생활용품</option>
             <option value="9">유아동</option>
           </select>
-        </div>
+        </div> -->
 
         <div class="form-group">
           <label>썸네일 업로드</label>
@@ -372,6 +372,7 @@ onMounted(() => {
 input[type="text"],
 input[type="datetime-local"],
 input[type="file"],
+input[type="password"],
 textarea,
 select {
   width: 100%;

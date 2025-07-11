@@ -152,6 +152,13 @@ const hasInitialParticipantSet = ref(false);
 
 let chatSubscription = null;
 
+const filteredStickers = computed(() => {
+  return Object.fromEntries(
+    Object.entries(stickerMap).filter(([key]) => key.startsWith(activeTab.value))
+  );
+});
+
+const socket = new SockJS('http://192.168.4.132:8080/ws-chat');
 const stompClient = new Client({
   webSocketFactory: () => new SockJS('http://192.168.4.132:8080/ws-chat'),
   reconnectDelay: 5000,
