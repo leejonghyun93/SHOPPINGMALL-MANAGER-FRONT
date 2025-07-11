@@ -83,15 +83,11 @@
           </table>
         </div>
 
-        <div class="chat-box">
-          <div class="chat-header" @click="toggleChatBox">
-            <h3>실시간 채팅</h3>
-            <button class="toggle-button">{{ showChat ? '접기 ▲' : '펼치기 ▼' }}</button>
-          </div>
+        
 
         <!-- ✅ 전체 chat-content를 통째로 접었다 폈다 -->
         <div :class="['chat-box', { collapsed: isCollapsed }]" v-if="broadcast.broadcast_id">
-          <SellerChat :broadcastId="broadcast.broadcast_id" />
+          <SellerChat :broadcastId="String(broadcast.broadcast_id)" />
         </div>
 
         <!-- 오른쪽 버튼 -->
@@ -105,7 +101,7 @@
       </div>
     </div>
   </div>
-</div>
+
 </template>
 
 <script setup>
@@ -130,7 +126,7 @@ const broadcast = reactive({
   productList: [],
   viewerList: [],
 })
-
+const isCollapsed = ref(false);
 const stream_key = ref('')
 const rtmp_url = ref('')
 const stream_url = ref('')
@@ -182,10 +178,10 @@ const playStream = () => {
   console.log(stream_url.value)
   if (Hls.isSupported()) {
     const hls = new Hls({
-      liveSyncDuration: 1,
-      liveMaxLatencyDuration: 2,
+      liveSyncDuration: 5, // 현재 방송 시간보다 약 5초 뒤로 동기화 (지연 증가)
+      liveMaxLatencyDuration: 10, // 최대 10초까지 지연 허용
       enableWorker: true,
-      lowLatencyMode: true
+      lowLatencyMode: false // 저지연모드 꺼서 버퍼 확보
     })
     hls.loadSource(hlsUrl)
     hls.attachMedia(videoRef.value)
@@ -289,7 +285,11 @@ const exitBroadcast = () => {
 }
 
 const exitPage = () => {
-  router.push('/')
+  if (window.opener) {
+    window.close(); // 팝업이라면 창 닫기
+  } else {
+    this.$router.push("/"); // 팝업이 아닌 일반 페이지일 경우 홈으로 이동
+  }
 }
 
 function formatDateToMySQL(date) {
@@ -311,7 +311,7 @@ const toggleStreamKey = () => {
 // 스트림 키 복사
 const copyStreamKey = async () => {
   try {
-    await navigator.clipboard.writeText(broadcast.stream_key)
+    await navigator.clipboard.writeText(stream_key.value)
     alert('스트림 키 복사 완료!')
   } catch (err) {
     alert('복사 실패')
