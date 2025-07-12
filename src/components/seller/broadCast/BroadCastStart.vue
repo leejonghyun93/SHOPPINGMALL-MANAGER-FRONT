@@ -269,6 +269,7 @@ const sendToBroadcast = () => {
   updateBroadcastStatus({
     broadcast_id: broadcast.broadcast_id,
     broadcast_status: 'LIVE',
+    is_public: 1,
     actual_start_time: formatDateToMySQL(now)
   })
   alert('방송 송출 시작!')
@@ -279,6 +280,7 @@ const exitBroadcast = () => {
   updateBroadcastStatus({
     broadcast_id: broadcast.broadcast_id,
     broadcast_status: 'ENDED',
+    is_public: 0,
     actual_end_time: formatDateToMySQL(now)
   })
   alert('방송 송출 종료!')

@@ -45,12 +45,15 @@
 
         <div class="form-item">
           <label>우편번호</label>
-          <input v-model="form.zipcode" type="text" />
+          <div class="zipcode-wrapper">
+            <input v-model="form.zipcode" type="text" readonly />
+            <button type="button" @click="searchAddress">주소 검색</button>
+          </div>
         </div>
 
         <div class="form-item">
           <label>주소</label>
-          <input v-model="form.address" type="text" />
+          <input v-model="form.address" type="text" readonly />
         </div>
 
         <div class="form-item">
@@ -203,6 +206,30 @@ function valid() {
       }
     })
 }
+
+const loadDaumPostcodeScript = () => {
+  return new Promise((resolve, reject) => {
+    if (window.daum && window.daum.Postcode) {
+      resolve()
+      return
+    }
+    const script = document.createElement('script')
+    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
+    script.onload = resolve
+    script.onerror = reject
+    document.head.appendChild(script)
+  })
+}
+
+const searchAddress = async () => {
+  await loadDaumPostcodeScript()
+  new window.daum.Postcode({
+    oncomplete: function (data) {
+      form.zipcode = data.zonecode
+      form.address = data.roadAddress || data.jibunAddress
+    }
+  }).open()
+}
 </script>
 
 <style scoped>
@@ -317,5 +344,18 @@ textarea {
   gap: 8px;
   font-weight: normal;
   white-space: nowrap; /* 줄바꿈 방지 */
+}
+
+.zipcode-wrapper {
+  display: flex;
+  gap: 10px;
+}
+
+.zipcode-wrapper input {
+  flex: 1;
+}
+
+.zipcode-wrapper button {
+  padding: 0 10px;
 }
 </style>

@@ -81,7 +81,10 @@
       <div class="grid">
         <div class="form-group">
           <label>우편번호</label>
-          <input type="text" v-model="User.zipcode"/>
+          <div class="zipcode-wrapper">
+            <input v-model="User.zipcode" type="text" readonly />
+            <button type="button" @click="searchAddress">주소 검색</button>
+          </div>
         </div>
         <div class="form-group full">
           <label>주소</label>
@@ -208,6 +211,7 @@
                 <span class="slider-label off">ON</span>
                 <span class="slider-label on">OFF</span>
                 </span>
+                <p>현재 값: {{ User.approved_yn }}</p>
             </label>
         </div>
     </div>
@@ -336,6 +340,7 @@ const getOrderDetail = async(targetUserId) => {
 
 const putUserDetail = async () => {
   try {
+    console.log('보내는 값:', User.approved_yn); // ✅ 콘솔로 확인
     await axios.put('/api/user-detail', User)
     alert('회원 정보를 수정하였습니다!')
     const filterType = getFilterTypeFromUser(User)
@@ -415,6 +420,31 @@ const isAdminViewingOtherUser = computed(() => {
 const isMyPage = computed(() => {
   return targetUserId.value === userId.value
 })
+
+
+const loadDaumPostcodeScript = () => {
+  return new Promise((resolve, reject) => {
+    if (window.daum && window.daum.Postcode) {
+      resolve()
+      return
+    }
+    const script = document.createElement('script')
+    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
+    script.onload = resolve
+    script.onerror = reject
+    document.head.appendChild(script)
+  })
+}
+
+const searchAddress = async () => {
+  await loadDaumPostcodeScript()
+  new window.daum.Postcode({
+    oncomplete: function (data) {
+      User.zipcode = data.zonecode
+      User.address = data.roadAddress || data.jibunAddress
+    }
+  }).open()
+}
 
 function goBack() {
   router.back();
@@ -676,5 +706,18 @@ onMounted(async () => {
 }
 .force-withdraw-btn:hover {
   background-color: #d50000;
+}
+
+.zipcode-wrapper {
+  display: flex;
+  gap: 10px;
+}
+
+.zipcode-wrapper input {
+  flex: 1;
+}
+
+.zipcode-wrapper button {
+  padding: 0 10px;
 }
 </style>
