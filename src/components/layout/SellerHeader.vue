@@ -5,8 +5,6 @@
         <span class="welcome-text">
           <router-link :to="`/admin/user-detail/${userId}`" class="nickname-link">{{ userName }}</router-link>님
         </span>
-      <span class="token-expire">남은 시간: {{ formattedTime }}</span>
-      <button class="btn" @click="extendToken">시간 연장</button>
       <button class="btn" @click="logout">로그아웃</button>
     </div>
   </header>

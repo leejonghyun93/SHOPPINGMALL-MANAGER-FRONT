@@ -191,7 +191,6 @@ const playStream = () => {
 }
 
 const startBroadcast = async () => {
-
   console.log("✅ 요청 전에 broadcast_id 확인:", broadcast.broadcast_id);
   console.log("✅ 요청 전에 token 확인:", token);
 
@@ -225,7 +224,6 @@ const startBroadcast = async () => {
 };
 
 const stopBroadcast = async () => {
-
   try {
     const res = await axios.post(`/api/broadcast/stop`, {
       broadcast_id: broadcast.broadcast_id
@@ -255,6 +253,89 @@ const stopBroadcast = async () => {
   }
 };
 
+const sendToBroadcast = async () => {
+  try {
+    const res = await axios.post(`/api/broadcast/live`, {
+      broadcast_id: broadcast.broadcast_id
+    }, {
+      headers: {
+        Authorization: `Bearer ${token.value}`
+      }
+    })
+
+    const now = new Date().toISOString()
+    updateBroadcastStatus({
+      broadcast_id: broadcast.broadcast_id,
+      broadcast_status: 'LIVE',
+      is_public: 1,
+      actual_start_time: formatDateToMySQL(now)
+    })
+
+    console.log("✅ 요청 후에 token 확인:", token);
+
+    if (res.data.status === 'success') {
+      alert("방송 송출을 시작했습니다!");
+      // 필요한 경우 스트림 URL 새로고침
+      
+      broadcast.stream_url = res.data.stream_url;
+    } else {
+      alert("방송 시작 실패: " + res.data.message);
+      
+    }
+  } catch (e) {
+    console.error(e);
+    alert("서버 오류로 방송 시작에 실패했습니다.");
+    console.error("❌ 요청 실패:", e);
+    console.error("📛 에러 메시지:", e.message);
+    console.error("📛 응답:", e.response);
+  }
+};
+
+
+const exitBroadcast = async () => {
+  try {
+    const now = new Date().toISOString()
+
+    // 1. 방송 상태 업데이트
+    updateBroadcastStatus({
+      broadcast_id: broadcast.broadcast_id,
+      broadcast_status: 'ENDED',
+      is_public: 0,
+      actual_end_time: formatDateToMySQL(now)
+    });
+
+    // 2. 방송 종료 요청 (예: OBS 녹화 종료와 연동됨)
+    const res = await axios.post(`/api/broadcast/ended`, {
+      broadcast_id: broadcast.broadcast_id
+    }, {
+      headers: {
+        Authorization: `Bearer ${token.value}`
+      }
+    });
+
+    // 3. 업로드 요청도 여기서 같이 실행 (서버 쪽 OBS 연동이 됐을 경우)
+    await axios.post(`/api/broadcast/video/upload`, {
+      broadcast_id: broadcast.broadcast_id
+    }, {
+      headers: {
+        Authorization: `Bearer ${token.value}`
+      }
+    });
+
+    // 4. 성공 처리
+    if (res.data.status === 'success') {
+      alert("방송 종료 및 다시보기가 등록되었습니다!");
+      broadcast.stream_url = res.data.stream_url;
+    } else {
+      alert("방송 종료 실패: " + res.data.message);
+    }
+
+  } catch (e) {
+    console.error("❌ 방송 종료 실패:", e);
+    alert("서버 오류로 방송 종료에 실패했습니다.");
+  }
+};
+
 const updateBroadcastStatus = async (payload) => {
   try {
     await axios.put('/api/broadcast/status', payload)
@@ -262,28 +343,6 @@ const updateBroadcastStatus = async (payload) => {
   } catch (err) {
     alert('업데이트 실패: ' + err.message)
   }
-}
-
-const sendToBroadcast = () => {
-  const now = new Date().toISOString()
-  updateBroadcastStatus({
-    broadcast_id: broadcast.broadcast_id,
-    broadcast_status: 'LIVE',
-    is_public: 1,
-    actual_start_time: formatDateToMySQL(now)
-  })
-  alert('방송 송출 시작!')
-}
-
-const exitBroadcast = () => {
-  const now = new Date().toISOString()
-  updateBroadcastStatus({
-    broadcast_id: broadcast.broadcast_id,
-    broadcast_status: 'ENDED',
-    is_public: 0,
-    actual_end_time: formatDateToMySQL(now)
-  })
-  alert('방송 송출 종료!')
 }
 
 const exitPage = () => {

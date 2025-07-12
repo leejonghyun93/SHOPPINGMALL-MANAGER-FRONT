@@ -78,6 +78,14 @@
       :disabled="currentPage === totalPages" 
       @click="goToPage(currentPage + 1)">다음</button>
     </div>
+    <div class="right-selects">
+      <button class="btn-unlock" @click="selectUnLock">
+        잠금 선택 해제
+      </button>
+      <button class="btn-blacklist" @click="selectUnBlackList">
+        블랙리스트 선택 해제
+      </button>
+    </div>
   </div>
 </template>
 
@@ -162,6 +170,54 @@ const toggleAll = () => {
     ? memberlist.value.map(m => m.user_id)
     : [];
 }
+
+const selectUnLock = async () => {
+  if (selectedOrders.value.length === 0) {
+    alert("선택된 회원이 없습니다.");
+    return;
+  }
+
+  const confirmed = window.confirm("선택한 회원들을 잠금 해제 하시겠습니까?");
+  if (!confirmed) return;
+
+  try {
+    const response = await axios.put("/api/admin/users/unlock", {
+      userIds: selectedOrders.value,
+      status: 'Y'
+    });
+
+    alert(response.data.message || "잠금 해제 완료!");
+    getMemberList(); // 목록 갱신
+    selectedOrders.value = []; // 선택 초기화
+  } catch (e) {
+    console.error("❌ 잠금 해제 실패:", e);
+    alert("오류가 발생했습니다.");
+  }
+};
+
+const selectUnBlackList = async () => {
+  if (selectedOrders.value.length === 0) {
+    alert("선택된 회원이 없습니다.");
+    return;
+  }
+
+  const confirmed = window.confirm("선택한 회원들을 블랙리스트 해제 하시겠습니까?");
+  if (!confirmed) return;
+
+  try {
+    const response = await axios.put("/api/admin/users/blacklist", {
+      userIds: selectedOrders.value,
+      blacklisted: 'N'
+    });
+
+    alert(response.data.message || "블랙리스트 해제 완료!");
+    getMemberList(); // 목록 갱신
+    selectedOrders.value = []; // 선택 초기화
+  } catch (e) {
+    console.error("❌ 블랙리스트 해제 실패:", e);
+    alert("오류가 발생했습니다.");
+  }
+};
 
 watch(selectedOrders, (newVal) => {
   allSelected.value = newVal.length === memberlist.value.length
@@ -289,5 +345,54 @@ onMounted(() => {
 }
 .btn-main:hover {
   background: #1746a2;
+}
+
+.right-selects {
+  display: flex;
+  justify-content: flex-end;
+  margin: 16px 0;
+  gap: 10px;
+}
+
+.btn-unlock {
+  background-color: #7aef44; /* 파란색 계열 (tailwind 기준 red-500) */
+  color: white;
+  font-weight: 600;
+  padding: 10px 18px;
+  font-size: 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-unlock:hover {
+  background-color: #26dc3e; 
+}
+
+.btn-unlock:disabled {
+  background-color: #c8fca5; 
+  cursor: not-allowed;
+}
+
+.btn-blacklist {
+  background-color: #446cef; /* 파란색 계열 (tailwind 기준 red-500) */
+  color: white;
+  font-weight: 600;
+  padding: 10px 18px;
+  font-size: 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-blacklist:hover {
+  background-color: #2926dc; 
+}
+
+.btn-blacklist:disabled {
+  background-color: #a5b2fc; 
+  cursor: not-allowed;
 }
 </style>

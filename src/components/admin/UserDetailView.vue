@@ -140,8 +140,11 @@
           <label>탈퇴 여부</label>
           <div class="radio-group">
             <!-- 탈퇴 회원이면 강조된 경고 메시지 표시 -->
-            <div v-if="User.secession_yn === 'Y'" class="secession-label">
+            <!-- <div v-if="User.secession_yn === 'Y'" class="secession-label">
                 탈퇴 회원입니다.
+            </div> -->
+            <div v-if="User.secession_yn === 'Y'">
+                <button class="force-withdraw-btn" @click="forceUnWithdraw">탈퇴 해제</button>
             </div>
 
             <!-- 탈퇴 회원이 아니면 강제 탈퇴 버튼 표시 -->
@@ -166,13 +169,15 @@
     <div class="card">
       <h3 class="card-title">기타 정보</h3>
       <table class="info-table">
-        <tr><th>가입일</th><td>{{ User.created_date }}</td></tr>
-        <tr><th>수정일</th><td>{{ User.updated_date }}</td></tr>
-        <tr><th>최종 로그인</th><td>{{ User.last_login }}</td></tr>
-        <tr><th>세션 기준 시간</th><td>{{ User.secession_date }}</td></tr>
-        <tr><th>로그인 실패 횟수</th><td>{{ User.login_fail_cnt }}회</td></tr>
-        <tr><th>소셜 로그인</th><td>{{ User.social_type }}</td></tr>
-        <tr><th>소셜 ID</th><td>{{ User.social_id }}</td></tr>
+        <tbody>
+          <tr><th>가입일</th><td>{{ User.created_date }}</td></tr>
+          <tr><th>수정일</th><td>{{ User.updated_date }}</td></tr>
+          <tr><th>최종 로그인</th><td>{{ User.last_login }}</td></tr>
+          <tr><th>세션 기준 시간</th><td>{{ User.secession_date }}</td></tr>
+          <tr><th>로그인 실패 횟수</th><td>{{ User.login_fail_cnt }}회</td></tr>
+          <tr><th>소셜 로그인</th><td>{{ User.social_type }}</td></tr>
+          <tr><th>소셜 ID</th><td>{{ User.social_id }}</td></tr>
+        </tbody>
       </table>
     </div>
 
@@ -237,7 +242,7 @@
             </tr>
             </thead>
             <tbody>
-            <tr v-for="order in Order" :key="order.order_id">
+            <tr v-for="order in paginatedOrders" :key="order.order_id">
                 <td>{{ order.order_id }}</td>
                 <td>{{ formatDate(order.order_date) }}</td>
                 <td>{{ order.product_name }}</td>
@@ -247,6 +252,36 @@
             </tr>
             </tbody>
         </table>
+
+        <div class="pagination">
+        <!-- 이전 그룹 -->
+        <button class="btn-main" 
+                :disabled="pageGroupStart <= 1"
+                @click="goToPage(pageGroupStart - 1)">«</button>
+
+        <!-- 이전 페이지 -->
+        <button class="btn-main" 
+                :disabled="currentPage === 1"
+                @click="goToPage(currentPage - 1)">‹</button>
+
+        <!-- 페이지 넘버 -->
+        <button v-for="page in visiblePages"
+                :key="page"
+                @click="goToPage(page)"
+                :class="['btn-main', { active: currentPage === page }]">
+          {{ page }}
+        </button>
+
+        <!-- 다음 페이지 -->
+        <button class="btn-main"
+                :disabled="currentPage === totalPages"
+                @click="goToPage(currentPage + 1)">›</button>
+
+        <!-- 다음 그룹 -->
+        <button class="btn-main" 
+                :disabled="pageGroupEnd >= totalPages"
+                @click="goToPage(pageGroupEnd + 1)">»</button>
+      </div>
     </div>
 
     
@@ -390,11 +425,37 @@ const forceWithdraw = async () => {
   if (!confirm2) return
 
   try {
-    const res = await axios.put(`/api/admin/user/secession/${userId}`)
+    const res = await axios.put(`/api/admin/user/secession/${userId}`, null, {
+      params: { secession_yn: 'Y' }
+    })
     alert(res.data || '탈퇴 처리 완료되었습니다.')
-    User.secession_yn = 'Y'
+     // ✅ 사용자 정보 다시 불러오기
+    // await getUserDetail()
   } catch (e) {
     console.error('❌ 탈퇴 실패:', e)
+    alert('탈퇴 처리 중 오류가 발생했습니다.')
+  }
+}
+
+const forceUnWithdraw = async () => {
+  const userId = route.params.user_id
+  if (!userId) {
+    alert('유저 정보가 올바르지 않습니다.')
+    return
+  }
+
+  const confirm = window.confirm('해당 유저를 탈퇴 해제하시겠습니까?')
+  if (!confirm) return
+
+
+  try {
+    const res = await axios.put(`/api/admin/user/secession/${userId}`, null, {
+      params: { secession_yn: 'N' }
+    })
+    alert(res.data || '탈퇴 해제 처리 완료되었습니다.')
+    // await getUserDetail()
+  } catch (e) {
+    console.error('❌ 탈퇴 해제 실패:', e)
     alert('탈퇴 처리 중 오류가 발생했습니다.')
   }
 }
@@ -445,6 +506,43 @@ const searchAddress = async () => {
     }
   }).open()
 }
+
+const currentPage = ref(1)
+const pageSize = 10  // 한 페이지에 보여줄 주문 수
+
+const totalPages = computed(() => {
+  return Math.ceil(Order.length / pageSize)
+})
+
+const paginatedOrders = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  const end = start + pageSize
+  return Order.slice(start, end)
+})
+
+const goToPage = (page) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+  }
+}
+
+const pageGroupSize = 5  // 한 번에 보여줄 페이지 수
+
+const pageGroupStart = computed(() => {
+  return Math.floor((currentPage.value - 1) / pageGroupSize) * pageGroupSize + 1
+})
+
+const pageGroupEnd = computed(() => {
+  return Math.min(pageGroupStart.value + pageGroupSize - 1, totalPages.value)
+})
+
+const visiblePages = computed(() => {
+  const pages = []
+  for (let i = pageGroupStart.value; i <= pageGroupEnd.value; i++) {
+    pages.push(i)
+  }
+  return pages
+})
 
 function goBack() {
   router.back();
@@ -719,5 +817,36 @@ onMounted(async () => {
 
 .zipcode-wrapper button {
   padding: 0 10px;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.btn-main {
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-main:hover {
+  background-color: #1e40af;
+}
+
+.btn-main:disabled {
+  background-color: #d1d5db;
+  cursor: not-allowed;
+}
+
+.btn-main.active {
+  background-color: #1e3a8a;
+  font-weight: bold;
 }
 </style>

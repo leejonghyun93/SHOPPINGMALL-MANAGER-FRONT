@@ -78,6 +78,11 @@
       :disabled="currentPage === totalPages" 
       @click="goToPage(currentPage + 1)">다음</button>
     </div>
+    <div class="right-selects">
+      <button class="btn-blacklist" @click="selectBlackList">
+        블랙리스트 선택 설정
+      </button>
+    </div>
   </div>
 </template>
 
@@ -162,6 +167,30 @@ const toggleAll = () => {
     ? memberlist.value.map(m => m.user_id)
     : [];
 }
+
+const selectBlackList = async () => {
+  if (selectedOrders.value.length === 0) {
+    alert("선택된 회원이 없습니다.");
+    return;
+  }
+
+  const confirmed = window.confirm("선택한 회원들을 블랙리스트로 설정하시겠습니까?");
+  if (!confirmed) return;
+
+  try {
+    const response = await axios.put("/api/admin/users/blacklist", {
+      userIds: selectedOrders.value,
+      blacklisted: 'Y'
+    });
+
+    alert(response.data.message || "블랙리스트 설정 완료!");
+    getMemberList(); // 목록 갱신
+    selectedOrders.value = []; // 선택 초기화
+  } catch (e) {
+    console.error("❌ 블랙리스트 설정 실패:", e);
+    alert("오류가 발생했습니다.");
+  }
+};
 
 watch(selectedOrders, (newVal) => {
   allSelected.value = newVal.length === memberlist.value.length
@@ -289,5 +318,32 @@ onMounted(() => {
 }
 .btn-main:hover {
   background: #1746a2;
+}
+
+.right-selects {
+  display: flex;
+  justify-content: flex-end;
+  margin: 16px 0;
+}
+
+.btn-blacklist {
+  background-color: #ef4444; /* 빨간색 계열 (tailwind 기준 red-500) */
+  color: white;
+  font-weight: 600;
+  padding: 10px 18px;
+  font-size: 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-blacklist:hover {
+  background-color: #dc2626; /* red-600 */
+}
+
+.btn-blacklist:disabled {
+  background-color: #fca5a5; /* red-300 */
+  cursor: not-allowed;
 }
 </style>
