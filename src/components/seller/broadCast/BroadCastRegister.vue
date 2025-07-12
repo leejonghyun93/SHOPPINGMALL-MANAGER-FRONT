@@ -169,7 +169,7 @@ const broadcast = reactive({
   scheduled_start_time: '',
   scheduled_end_time: '',
   obs_host: '',
-  obs_port: '',
+  obs_port: '4455',
   obs_password: '',
   nginx_host: '',
   productList: [],
